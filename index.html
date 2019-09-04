@@ -371,6 +371,8 @@ class Pile {
 				ctx.fillText( "1 card", this._x, this._y );
 		} else {
 			// show total life
+			if (!this.topCard.shown) return;
+
 			grad.addColorStop(0, "rgba(255,0,0,.7)");
 			grad.addColorStop(1, "rgba(255,0,0,.2)");
 			ctx.fillStyle = grad;
@@ -815,8 +817,6 @@ function clicked(pile) {
 				});
 				if (!highlights.length) {
 					state = STATE_FINISHED_L1;
-					repaint_all();
-					alert("YOU LOSE!");
 					break;
 				}
 				state = STATE_MAIN_RANOUT;
@@ -938,8 +938,6 @@ function clicked(pile) {
 			// check win condition
 			if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 ) {
 				state = STATE_FINISHED_W;
-				repaint_all();
-				alert("YOU WIN!");
 				break;
 			}
 
@@ -958,8 +956,6 @@ function clicked(pile) {
 			// check win condition
 			if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 ) {
 				state = STATE_FINISHED_W;
-				repaint_all();
-				alert("YOU WIN!");
 				break;
 			}
 
@@ -983,8 +979,6 @@ function clicked(pile) {
 					// check if enemy became unkillable
 					if (pile.totalValue > 20 || (pile.totalValue === 20 && pile.topCard.value === 13)) {
 						state = STATE_FINISHED_L2;
-						repaint_all();
-						alert("YOU LOSE!");
 						break;
 					}
 				}
@@ -1016,7 +1010,7 @@ function clicked(pile) {
 		case STATE_FINISHED_W:
 		case STATE_FINISHED_L1:
 		case STATE_FINISHED_L2:
-			break;
+			return;
 
 		default:
 			alert("BAD STATE: "+state);
@@ -1048,6 +1042,13 @@ function clicked(pile) {
 	}
 
 	repaint_all();
+
+	// announce victory or defeat
+	switch (state) {
+		case STATE_FINISHED_W:  alert("YOU WIN!"); break;
+		case STATE_FINISHED_L1: alert("YOU LOSE!"); break;
+		case STATE_FINISHED_L2: alert("YOU LOSE!"); break;
+	}
 
 	// autoclick Deck
 	if (Config.auto_draw) {
