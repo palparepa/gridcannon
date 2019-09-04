@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html><head>
+	<title>Kill the Royals</title>
+	<meta charset="UTF-8">
+	<style>
+		fieldset table td:first-child { text-align:right }
+		fieldset table td:last-child { text-align:left }
+	</style>
+</head><body style="margin:0;background:black;font-family:sans-serif">
+
+<canvas id="canvas" style="position:fixed"></canvas>
+<canvas id="canvas2" style="position:fixed;pointer-events:none"></canvas>
+<div style="position:fixed;top:0;left:0;color:white;font-size:70%;background:#444;padding:2px 5px 5px 2px;border-radius: 0 0 10px 0">
+	Based on <a href="https://www.pentadact.com/2019-08-20-gridcannon-a-single-player-game-with-regular-playing-cards/" target="_blank" style="color:yellow">Gridcannon</a> by Tom Francis.
+	<br>Check link for instructions.
+</div>
+<div id="option_btn" style="position:fixed;top:0;right:0;color:#ccc;font-size:120%;background:#900;padding:5px 5px 10px 10px;border-radius: 0 0 0 20px;cursor:pointer" onclick="open_options()">options</div>
+
+<div id="options" style="position:fixed;top:0;right:0;color:white;background:#900;padding:15px 15px 20px 20px;border-radius: 0 0 0 20px;text-align:center;display:none;font-size:80%">
+	<b style="font-size:150%"><u>&nbsp;OPTIONS&nbsp;</u></b>
+	<table style="margin:2em auto"><tr><td valign="top">
+		<fieldset><legend>Display</legend>
+			<table><tr>
+				<td><input type="checkbox" id="show_light"></td>
+				<td><label for="show_light">Highlight playable cards</label></td>
+			</tr><tr>
+				<td><input type="checkbox" id="show_help"></td>
+				<td><label for="show_help">Show help</label></td>
+			</tr><tr>
+				<td><input type="checkbox" id="show_hover"></td>
+				<td><label for="show_hover">Show hover tips</label></td>
+			</tr></table>
+		</fieldset>
+	</td><td valign="top" rowspan="3">
+		<fieldset><legend>Rules</legend>
+			<table><tr>
+				<td>Maximum value card</td>
+				<td><select id="max_value"><option value="10">10</option><option value="9">9</option><option value="8">8</option></select></td>
+			</tr><tr>
+				<td>Number of Joker pairs</td>
+				<td><select id="num_jokers"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></td>
+			</tr><tr>
+				<td>Number of Blue Jokers</td>
+				<td><select id="free_joker"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></td>
+			</tr><tr>
+				<td>On build, place cards</td>
+				<td><select id="place_anygrid"><option value="1">anywhere</option><option value="0">in order</option></select></td>
+			</tr><tr>
+				<td>Place enemies</td>
+				<td><select id="place_anyenemy"><option value="1">anywhere</option><option value="0">near most similar card</option></select></td>
+			</tr><tr>
+				<td>When adding cards to deck</td>
+				<td><select id="deck_shuffle"><option value="0">don't shuffle</option><option value="1">shuffle new cards</option><option value="2">shuffle whole deck</option></select></td>
+			</tr><tr>
+				<td>On pile reset, jokers</td>
+				<td><select id="joker_once"><option value="0">remain</option><option value="1">are removed</option></select></td>
+			</tr><tr>
+				<td>On pile reset, aces</td>
+				<td><select id="ace_once"><option value="0">remain</option><option value="1">are removed</option></select></td>
+			</tr><tr>
+				<td>Jokers try to go</td>
+				<td><select id="joker_color"><option value="0">anywhere</option><option value="1">to same color</option></select></td>
+			</tr><tr>
+				<td>Aces try to go</td>
+				<td><select id="ace_color"><option value="0">anywhere</option><option value="1">to same color</option><option value="2">to same suit</option></select></td>
+			</tr><tr>
+				<td>Attacks</td>
+				<td><select id="armor_pierce"><option value="1">can remove armor</option><option value="0">must kill enemy</option></select></td>
+			</tr></table>
+			<!-- <button onclick="set_options(0)">Easiest</button> <button onclick="set_options(1)">Standard</button> <button onclick="set_options(2)">Hardest</button> -->
+		</fieldset>
+	</td></tr><tr><td valign="bottom">
+		<fieldset><legend>Automation</legend>
+			<table><tr>
+				<td><input type="checkbox" id="auto_draw"></td>
+				<td><label for="auto_draw">Auto-draw from main deck</label></td>
+			</tr><tr>
+				<td><input type="checkbox" id="auto_space"></td>
+				<td><label for="auto_space">Tap 'space' to make a forced move</label></td>
+			</tr></table>
+		</fieldset>
+	</td></tr></table>
+	<button style="font-size:100%;padding:3px 2em;margin:0 1em" onclick="close_options(true)">Start New Game</button>
+	<button style="font-size:100%;padding:3px 2em;margin:0 1em" onclick="close_options(false)">Close</button>
+
+</div>
+
+<script>
+"use strict";
+
+const Config = {
+	// display
+	show_help:   true, // show help
+	show_hover: false, // show info on grid and royals, when hovering
+	show_light:  true, // highlights playable cards
+
+	// automation
+	auto_draw:  false, // automatically draw card from deck (if it's the only option and it has cards available)
+	auto_space:  true, // if there is a single option available, tap 'space' to play it
+
+	// rules
+	max_value:     10, // use card numbers up to this value (8, 9 or 10)
+	num_jokers:     1, // jokers of each color
+	free_joker:     0, // blue jokers
+	place_anygrid:  0, // on building phase, allow to place card in any empty grid pile
+	place_anyenemy: 0, // allow placing royals on any enemy position
+	deck_shuffle:   0, // shuffle cards when adding to deck? 0:no, 1:yes, 2:shuffle whole deck
+	joker_once:     0, // when resetting a pile, a joker is removed (except when played over an ace, joker, or empty grid)
+	ace_once:       0, // when resetting a pile, an ace is removed (except when played over an ace, joker, or empty grid)
+	joker_color:    0, // jokers must be played, preferently, on pile of the same color
+	ace_color:      0, // ace must be played, preferently, on pile of the same color. if 2, on pile of the same suit
+	armor_pierce:   0, // when an enemy is attacked but not killed, if damage was enough to kill it without armor, remove last card armor (removes 'enemy too strong' lose condition)
+};
+const ConfigDefault = {};
+for (let key in Config) ConfigDefault[key] = Config[key];
+
+var helpText = "";
+var hovering = null;
+
+
+var sprites = new Image();
+sprites.src = "cards.png";
+
+var canvas = document.getElementById("canvas");
+var canvas2 = document.getElementById("canvas2");
+var ctx = canvas.getContext("2d");
+var ctx2 = canvas2.getContext("2d");
+
+
+const W = 140;
+const H = 190;
+const S = 5; // small separation between grid cards
+const SS = 20; // medium separation between grid and royals
+const SSS = 50; // big separation between areas
+const BORDER = 10;
+const HELPSIZE = 50;
+
+// position of central card
+const Cx = BORDER + W*3 + S+SS + SSS + H;
+const Cy = BORDER + H*3 + S+SS;
+
+// position of shame pile
+const Sx = Cx+Cx-H/2 - BORDER;
+const Sy = BORDER + W;
+
+// position of main deck
+const Dx = BORDER + H/2;
+const Dy = Cy;
+
+
+function resize_canvas() {
+	canvas.width = BORDER*2 + W*6+S*2+SS*2+SSS*2+H*2;
+	canvas.height = BORDER*2 + H*6+S*2+SS*2 + Config.show_help*HELPSIZE;
+	canvas2.width = canvas.width;
+	canvas2.height = canvas.height;
+
+	ctx.font = "30px serif";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+}
+resize_canvas();
+
+
+const backSprite = [16,2];
+const HIGHLIGHT_DRAW = "yellow"; // draw from main deck (clickable)
+const HIGHLIGHT_DRAWTO = "blue"; // moving from main deck
+const HIGHLIGHT_SHAME = "red"; // send to shame (clickable)
+const HIGHLIGHT_CLEAR = "cyan"; // clear a grid (clickable)
+const HIGHLIGHT_EXTRA = "blue"; // moving royal from extra
+const HIGHLIGHT_TOEXTRAR = "yellow"; // moving royal to extra (clickable)
+const HIGHLIGHT_TOEXTRA = "yellow"; // moving card to extra (clickable)
+const HIGHLIGHT_NENEMY = "yellow"; // flush extra into main deck (clickable)
+const HIGHLIGHT_ARMOR = "red"; // send to armor (clickable)
+const HIGHLIGHT_BUILD = "white"; // send card to play area while building (clickable)
+const HIGHLIGHT_NEWENEMY = "white"; // send royal to play area (clickable)
+const HIGHLIGHT_TOGRID = "yellow"; // send card to play area (clickable)
+const HIGHLIGHT_RANOUT = "red"; // clear a grid after ran out of cards (clickable)
+
+
+
+
+
+let canvasW;
+let canvasH;
+(window.onresize = function() {
+	const realW = canvas.width;
+	const realH = canvas.height;
+
+	const windowH = window.innerHeight;
+	const windowW = window.innerWidth;
+
+	const ratioWH = realW / realH;
+	const ratioHW = realH / realW;
+
+	canvasW = (windowH * ratioWH < windowW) ? windowH*ratioWH : windowW;
+	canvasH = (windowH * ratioWH > windowW) ? windowW*ratioHW : windowH;
+
+	canvas2.style.width  = canvas.style.width  = canvasW + "px";
+	canvas2.style.height = canvas.style.height = canvasH + "px";
+
+	canvas2.style.left = canvas.style.left = ((windowW - canvasW) / 2) + "px";
+	canvas2.style.top  = canvas.style.top  = ((windowH - canvasH) / 2) + "px";
+})();
+
+
+
+class Card {
+	// suits
+	static get Diamonds() { return ["♦",  "R",  0]; }
+	static get Hearts()   { return ["♥",  "R",  1]; }
+	static get Spades()   { return ["♠",  "B",  2]; }
+	static get Clubs()    { return ["♣",  "B",  3]; }
+	// "suits" for jokers
+	static get Red()      { return [null, "R",  0]; }
+	static get Black()    { return [null, "B",  1]; }
+	static get Blue()     { return [null, null, 2]; }
+
+	constructor(value,suit,color, frontSprite,backSprite, shown=false) {
+		this._value = value;
+		this._suit = suit;
+		this._color = color;
+		this._frontSprite = frontSprite;
+		this._backSprite = backSprite;
+		this._shown = shown;
+	}
+	static newValueCard(value, [suit,color,Y], backSprite, shown=false) {
+		return new Card(value,suit,color,[value,Y],backSprite, shown);
+	}
+	get value() {
+		return this._value;
+	}
+	get suit() {
+		return this._suit;
+	}
+	get color() {
+		return this._color;
+	}
+	get sprite() {
+		return this._shown ? this._frontSprite : this._backSprite;
+	}
+	get shown() {
+		return this._shown;
+	}
+	get show() {
+		this._shown = true;
+		return this;
+	}
+	get hide() {
+		this._shown = false;
+		return this;
+	}
+	get flip() {
+		this._shown = !this._shown;
+		return this;
+	}
+
+	static get build_deck() {
+		const deck = [];
+
+		// value cards
+		[Card.Diamonds, Card.Hearts, Card.Spades, Card.Clubs].forEach(suit => {
+			for (let value = 1; value <= 13; value++) {
+				if (value < 11 && value > Config.max_value) continue;
+				deck.push(Card.newValueCard(value, suit, backSprite, true));
+			}
+		})
+
+		// jokers
+		for (let i=0; i<Config.num_jokers; i++) {
+			deck.push(Card.newValueCard(0, Card.Black, backSprite, true));
+			deck.push(Card.newValueCard(0, Card.Red,   backSprite, true));
+		}
+		for (let i=0; i<Config.free_joker; i++) {
+			deck.push(Card.newValueCard(0, Card.Blue,  backSprite, true));
+		}
+
+		return deck;
+	}
+
+	// a special 'card' to show the outline of a card
+	static get none() {
+		return new Card(null,null,null, [0,3], [0,3]);
+	}
+}
+
+
+// represents a pile of cards
+// a pile has a position on the canvas, and a "spill area" on where to paint extra cards
+class Pile {
+	constructor(name,type, [x,y], [spillX,spillY]=[0,0], spillSingle=Math.max(Math.abs(spillX),Math.abs(spillY)), spillMax=Infinity) {
+		this._name = name;
+		this._type = type;
+		// card list
+		this._cards = [];
+		// show outline when empty?
+		this._outline = false;
+		// rotation
+		this._rotate = false;
+		// where to show card?
+		this._x = x;
+		this._y = y;
+		// up to where to show other cards? (at most one can be non-zero)
+		if (spillX !== 0 && spillY !== 0) throw("spillX & spillY");
+		this._spillX = spillX;
+		this._spillY = spillY;
+		if (this._spillX || this._spillY) {
+			if (Math.abs(this._spillX) > Math.max(canvas.width,canvas.height))
+				this._spillX = Math.max(canvas.width,canvas.height) * Math.sign(this._spillX);
+			if (Math.abs(this._spillY) > Math.max(canvas.width,canvas.height))
+				this._spillY = Math.max(canvas.width,canvas.height) * Math.sign(this._spillY);
+
+			// desired space until next card
+			this._spillSingle = Math.abs(spillSingle);
+			const maxSingle = this._spillX ? W : H;
+			if (!this._spillSingle || this._spillSingle>maxSingle)
+				this._spillSingle = maxSingle;
+			// show no more than this number of cards
+			this._spillMax = spillMax;
+		} else {
+			this._spillSingle = 0;
+			this._spillMax = 0;
+		}
+
+		Pile.list.set(name, this);
+	}
+	get showOutline() { this._outline = true;  return this; }
+	get hideOutline() { this._outline = false; return this; }
+	get sideways() { this._rotate = true; return this; }
+	isHere(x,y) {
+		const [width,height] = this._rotate ? [H,W] : [W,H];
+
+		// is the main card in the given coordinates?
+		if (x < this._x-width/2 || y < this._y-height/2) return false;
+		if (x > this._x+width/2 || y > this._y+height/2) return false;
+
+		return true;
+	}
+
+	get name() { return this._name; }
+	get type() { return this._type; }
+
+	get length() { return this._cards.length; }
+	push(v) { return this._cards.push(v); }
+	unshift(v) { return this._cards.unshift(v); }
+	pop() { return this._cards.pop(); }
+	shift() { return this._cards.shift(); }
+	get topCard() { return this._cards.length ? this._cards.slice(-1)[0] : null; }
+
+	// sum of all values in pile
+	get totalValue() {
+		return this._cards.reduce( (hp,card) => hp+card.value, 0 );
+	}
+
+	paintTip() {
+		if (!this.length) return;
+		if (this._type !== "C" && this._type !== "R") return;
+
+		const grad = ctx.createRadialGradient(this._x,this._y,0, this._x,this._y,Math.max(W,H));
+
+		if (this._type === "C") {
+			// show number of cards
+			grad.addColorStop(0, "rgba(0,0,255,.7)");
+			grad.addColorStop(1, "rgba(0,0,255,.2)");
+			ctx.fillStyle = grad;
+			ctx.fillRect(this._x-W/2, this._y-H/2, W,H);
+
+			ctx.fillStyle = "white";
+			if (this.length>1)
+				ctx.fillText( this.length+" cards", this._x, this._y );
+			else
+				ctx.fillText( "1 card", this._x, this._y );
+		} else {
+			// show total life
+			grad.addColorStop(0, "rgba(255,0,0,.7)");
+			grad.addColorStop(1, "rgba(255,0,0,.2)");
+			ctx.fillStyle = grad;
+			ctx.fillRect(this._x-W/2, this._y-H/2, W,H);
+
+			ctx.fillStyle = "white";
+			ctx.fillText( "Life: "+this.totalValue, this._x, this._y );
+		}
+	}
+
+	shuffle() {
+		const pile = this._cards;
+		for (let i = pile.length-1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i+1));
+			[ pile[i],pile[j] ] = [ pile[j],pile[i] ];
+		}
+	}
+
+	static paint(card, x,y) {
+		const [sx,sy] = card.sprite;
+		ctx.drawImage(sprites, sx*W,sy*H,W,H, x,y,W,H);
+	}
+
+	paint() {
+		ctx.save();
+		ctx.translate(this._x, this._y);
+		if (this._rotate) ctx.rotate(Math.PI/2);
+
+		if (0) {
+			ctx.fillStyle = "blue";
+			ctx.fillRect(Math.min(this._spillX,0)-W/2, Math.min(this._spillY,0)-H/2, W+Math.abs(this._spillX,0),H+Math.abs(this._spillY,0));
+		}
+
+		if (!this._cards.length) {
+			if (this._outline)
+				Pile.paint(Card.none, -W/2,-H/2);
+		} else if (this._cards.length === 1 || !this._spillMax) {
+			Pile.paint(this._cards[this._cards.length-1], -W/2,-H/2);
+		} else {
+			const toShow = this._cards.slice(-(1+this._spillMax));
+			const extras = toShow.length - 1;
+			let [dx,dy] = [this._spillX/extras,this._spillY/extras];
+			if (Math.abs(dx) > this._spillSingle) dx = this._spillSingle * Math.sign(dx);
+			if (Math.abs(dy) > this._spillSingle) dy = this._spillSingle * Math.sign(dy);
+			let [sx,sy] = [dx*extras-W/2, dy*extras-H/2];
+			toShow.forEach(card => {
+				Pile.paint(card, sx,sy);
+				sx -= dx;
+				sy -= dy;
+			});
+		}
+
+		ctx.restore();
+	}
+
+	highlight(color) {
+		if (!Config.show_light) return;
+
+		ctx2.fillStyle = color;
+
+		ctx2.save();
+		ctx2.translate(this._x, this._y);
+		if (this._rotate) ctx2.rotate(Math.PI/2);
+
+		ctx2.fillRect(-W/2, -H/2, W,H);
+
+		ctx2.restore();
+	}
+
+	static get(name) {
+		return Pile.list.get(name);
+	}
+	static getRoyals() {
+		const R = [];
+		Pile.list.forEach(pile => {
+			if (pile.type === "R") R.push(pile);
+		});
+		return R;
+	}
+	static getGrids() {
+		const R = [];
+		Pile.list.forEach(pile => {
+			if (pile.type === "C") R.push(pile);
+		});
+		return R;
+	}
+
+	static clearAll() {
+		Pile.list.forEach(pile => pile._cards = []);
+	}
+}
+Pile.list = new Map;
+
+new Pile("RoyalT1","R", [Cx-1*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
+new Pile("RoyalT2","R", [Cx+0*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
+new Pile("RoyalT3","R", [Cx+1*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
+new Pile("RoyalB1","R", [Cx-1*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
+new Pile("RoyalB2","R", [Cx+0*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
+new Pile("RoyalB3","R", [Cx+1*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
+new Pile("RoyalR1","R", [Cx+2*W+S+SS, Cy-1*(H+S)], [ W/2,0], W/4);
+new Pile("RoyalR2","R", [Cx+2*W+S+SS, Cy+0*(H+S)], [ W/2,0], W/4);
+new Pile("RoyalR3","R", [Cx+2*W+S+SS, Cy+1*(H+S)], [ W/2,0], W/4);
+new Pile("RoyalL1","R", [Cx-2*W-S-SS, Cy-1*(H+S)], [-W/2,0], W/4);
+new Pile("RoyalL2","R", [Cx-2*W-S-SS, Cy+0*(H+S)], [-W/2,0], W/4);
+new Pile("RoyalL3","R", [Cx-2*W-S-SS, Cy+1*(H+S)], [-W/2,0], W/4);
+
+new Pile("Grid11","C", [Cx-1*(W+S), Cy-1*(H+S)]).showOutline;
+new Pile("Grid21","C", [Cx+0*(W+S), Cy-1*(H+S)]).showOutline;
+new Pile("Grid31","C", [Cx+1*(W+S), Cy-1*(H+S)]).showOutline;
+new Pile("Grid12","C", [Cx-1*(W+S), Cy+0*(H+S)]).showOutline;
+new Pile("Grid22","C", [Cx+0*(W+S), Cy+0*(H+S)]).showOutline;
+new Pile("Grid32","C", [Cx+1*(W+S), Cy+0*(H+S)]).showOutline;
+new Pile("Grid13","C", [Cx-1*(W+S), Cy+1*(H+S)]).showOutline;
+new Pile("Grid23","C", [Cx+0*(W+S), Cy+1*(H+S)]).showOutline;
+new Pile("Grid33","C", [Cx+1*(W+S), Cy+1*(H+S)]).showOutline;
+
+new Pile("Deck",null, [Dx,Dy]).showOutline.sideways;
+new Pile("Extra",null, [Dx,Dy+H+S],[Dy-H-S-W/2-BORDER,0],W/4,Infinity).sideways;
+
+//new Pile("Shame",null, [Sx,Sy],[W*6,0],W/4,Infinity).sideways;
+new Pile("Shame",null, [Sx,Sy],[Cy*2-Sy*2,0],W/4,Infinity).sideways;
+
+
+
+function findPile(x,y) {
+	for (const [name,pile] of Pile.list)
+		if (pile.isHere(x,y)) return pile;
+	return null;
+}
+
+function writeShame() {
+	const numShames = Pile.get("Shame").length;
+	ctx.fillStyle = "white";
+	if (numShames)
+		ctx.fillText("Shames: "+numShames, Sx,(Sy-W/2)/2);
+}
+
+function writeLeft() {
+	ctx.fillStyle = 'white';
+	ctx.fillText("Left: "+Pile.get("Deck").length, Dx,(Dy-W/2)-32);
+}
+
+function writeHelp() {
+	if (Config.show_help) {
+		ctx.fillStyle = "rgba(0,0,255,.3)";
+		ctx.fillRect(0,Cy+Cy,canvas.width,HELPSIZE);
+		ctx.fillStyle = "white";
+		ctx.fillText(helpText, Cx,Cy+Cy+HELPSIZE/2);
+	}
+}
+
+function repaint_all(rehighlight=true) {
+	ctx.fillStyle = "#222";
+	ctx.fillRect(0,0,canvas.width,canvas.height);
+	ctx.fillStyle = "#333";
+	ctx.fillRect(Cx-W/2-S-W-SS-W-W/2-SSS/2,0,(W+S*2+W*2+SS*2+W*2+W+SSS),Cy+Cy);
+	Pile.list.forEach(pile => pile.paint());
+	writeShame();
+	writeLeft();
+	writeHelp();
+
+	if (rehighlight) {
+		clear_highlights();
+		highlights.forEach(([namepile,color,valid=true]) => {
+			const pile = (typeof namepile === "string") ? Pile.get(namepile) : namepile;
+			pile.highlight(color);
+			if (valid)
+				valid_clicks.add(pile);
+		});
+	}
+
+	if (Config.show_hover && hovering) {
+		hovering.paintTip();
+	}
+}
+
+
+
+
+
+
+var opacity = 20;
+var opacity_d = null;
+function highlight_opacity() {
+	if (opacity <= 20) opacity_d = 2;
+	if (opacity >= 50) opacity_d = -2;
+	opacity = opacity + opacity_d;
+	canvas2.style.opacity = opacity/100;
+}
+function clear_highlights() {
+	opacity = 20;
+	ctx2.clearRect(0,0,canvas.width,canvas.height);
+	highlight_opacity();
+}
+setInterval(() => {
+	highlight_opacity();
+}, 50);
+
+
+
+
+window.onload = () => {
+
+	canvas.onclick = (e) => {
+		// get the real mouse position
+		const [x,y] = [ e.layerX*canvas.width/canvasW, e.layerY*canvas.height/canvasH ];
+		const pile = findPile(x,y);
+		if (pile)
+			clicked(pile);
+	}
+	canvas.onmousemove = (e) => {
+		// get the real mouse position
+		const [x,y] = [ e.layerX*canvas.width/canvasW, e.layerY*canvas.height/canvasH ];
+		const pile = findPile(x,y);
+		if (hovering === pile) return;
+		hovering = pile;
+		canvas.style.cursor = hovering ? "pointer" : "";
+		repaint_all(false);
+	}
+
+	document.body.onkeyup = e => {
+		// if a single card is clickable, click it when 'space' is pressed
+		if (!Config.auto_space) return;
+		if (e.keyCode !== 32) return;
+		if (valid_clicks.size !== 1) return;
+		clicked( valid_clicks.values().next().value );
+	}
+
+	new_game();
+
+}
+
+
+function new_game() {
+	state = STATE_ZERO;
+	Pile.clearAll();
+	Card.build_deck.forEach(card => Pile.get("Deck").push(card.hide));
+	Pile.get("Deck").shuffle();
+	clicked(null);
+}
+
+
+
+// given a royal card, returns piles of valid enemy positions for it
+function findEnemyPos(givenCard) {
+	const grids = []; // array; each element has: [card at grid (can be null), royalname]
+
+	if ( !Pile.get("RoyalT1").topCard ) grids.push( [Pile.get("Grid11").topCard, "RoyalT1"] );
+	if ( !Pile.get("RoyalT2").topCard ) grids.push( [Pile.get("Grid21").topCard, "RoyalT2"] );
+	if ( !Pile.get("RoyalT3").topCard ) grids.push( [Pile.get("Grid31").topCard, "RoyalT3"] );
+
+	if ( !Pile.get("RoyalR1").topCard ) grids.push( [Pile.get("Grid31").topCard, "RoyalR1"] );
+	if ( !Pile.get("RoyalR2").topCard ) grids.push( [Pile.get("Grid32").topCard, "RoyalR2"] );
+	if ( !Pile.get("RoyalR3").topCard ) grids.push( [Pile.get("Grid33").topCard, "RoyalR3"] );
+
+	if ( !Pile.get("RoyalB1").topCard ) grids.push( [Pile.get("Grid13").topCard, "RoyalB1"] );
+	if ( !Pile.get("RoyalB2").topCard ) grids.push( [Pile.get("Grid23").topCard, "RoyalB2"] );
+	if ( !Pile.get("RoyalB3").topCard ) grids.push( [Pile.get("Grid33").topCard, "RoyalB3"] );
+
+	if ( !Pile.get("RoyalL1").topCard ) grids.push( [Pile.get("Grid11").topCard, "RoyalL1"] );
+	if ( !Pile.get("RoyalL2").topCard ) grids.push( [Pile.get("Grid12").topCard, "RoyalL2"] );
+	if ( !Pile.get("RoyalL3").topCard ) grids.push( [Pile.get("Grid13").topCard, "RoyalL3"] );
+
+	let best = -1;
+	let bestList = [];
+	if (Config.place_anyenemy) {
+		grids.forEach(([card,pos]) => {
+			bestList.push(Pile.get(pos));
+		});
+	} else {
+		grids.forEach(([card,pos]) => {
+			let value;
+			if (!card) value = 0; // IDEA: use -1 to make it lower than jokers?
+			else if (givenCard.suit === card.suit) value = 40 + card.value; // 1. highest value card of the same suit
+			else if (givenCard.color === card.color) value = 20 + card.value; // 2. highest value card of same colour
+			else value = card.value; // 3. higuest value card
+
+			if (value > best) { best = value; bestList = []; }
+			if (value === best) bestList.push(Pile.get(pos));
+		});
+	}
+
+	return bestList;
+}
+
+
+// given a grid pile, attacks available enemies
+function checkAttacks(pile) {
+	[ // trigger, ammo1,ammo2, target
+		[ "Grid11", "Grid21","Grid31", "RoyalR1" ],
+		[ "Grid12", "Grid22","Grid32", "RoyalR2" ],
+		[ "Grid13", "Grid23","Grid33", "RoyalR3" ],
+		[ "Grid31", "Grid21","Grid11", "RoyalL1" ],
+		[ "Grid32", "Grid22","Grid12", "RoyalL2" ],
+		[ "Grid33", "Grid23","Grid13", "RoyalL3" ],
+		[ "Grid11", "Grid12","Grid13", "RoyalB1" ],
+		[ "Grid21", "Grid22","Grid23", "RoyalB2" ],
+		[ "Grid31", "Grid32","Grid33", "RoyalB3" ],
+		[ "Grid13", "Grid12","Grid11", "RoyalT1" ],
+		[ "Grid23", "Grid22","Grid21", "RoyalT2" ],
+		[ "Grid33", "Grid32","Grid31", "RoyalT3" ],
+	].forEach(([trigger, ammo1,ammo2, targetname]) => {
+		if (pile.name !== trigger) return;
+
+		const targetpile = Pile.get(targetname);
+		const target = targetpile.topCard;
+		if (!target || !target.shown) return;
+
+		let damage = 0;
+		[ Pile.get(ammo1).topCard, Pile.get(ammo2).topCard ].forEach(ammo => {
+			if (!ammo) return;
+			if (target.value >= 12 && target.color !== ammo.color) return;
+			if (target.value >= 13 && target.suit !== ammo.suit) return;
+			damage += ammo.value;
+		});
+
+		if (damage >= targetpile.totalValue) {
+			while (targetpile.length > 1) targetpile.shift(); // remove armor
+			target.flip; // 'kill' enemy
+		} else if (Config.armor_pierce && damage >= target.value) {
+			targetpile.shift(); // remove one armor
+		}
+	});
+}
+
+
+// add pile to main deck
+function add2deck(pile) {
+	if (Config.deck_shuffle === 1) pile.shuffle();
+	while (pile.length) {
+		Pile.get("Deck").unshift( pile.shift().hide );
+	}
+	if (Config.deck_shuffle === 2) Pile.get("Deck").shuffle();
+}
+
+
+
+
+
+const STATE_ZERO        =  0; // game hasn't started yet
+const STATE_BUILD_DRAW  =  1; // building the game. Waiting to draw
+const STATE_BUILD_ROYAL =  2; // building the game. Waiting to put royal on extra deck
+const STATE_BUILD_CARD  =  3; // building the game. Waiting to put normal on next free grid pile
+const STATE_BUILD_ENEMY =  4; // building the game. Waiting to put royal on attack position
+const STATE_MAIN_DRAW   =  5; // main game. Waiting to draw
+const STATE_MAIN_ENEMY  =  6; // main game. Waiting to put royal on attack position
+const STATE_MAIN_NENEMY =  7; // main game. New enemy! Flush extra into deck
+const STATE_MAIN_EXTRA  =  8; // main game. No enemies. Send deck to extra
+const STATE_MAIN_JOKER  =  9; // main game. Ace or Jokes. Put on grid
+const STATE_MAIN_TOGRID = 10; // main game. Put card on grid pile
+const STATE_MAIN_SHAME  = 11; // main game. Can't place card. Shame or armor?
+const STATE_MAIN_CLEAR  = 12; // main game. After shaming, clear a grid pile
+const STATE_MAIN_RANOUT = 13; // main game. After running out of cards. Choose a grid pile
+const STATE_FINISHED_W  = 14; // game ends (win)
+const STATE_FINISHED_L1 = 15; // game ends (out of cards)
+const STATE_FINISHED_L2 = 16; // game ends (invincible enemy)
+
+var state = STATE_ZERO;
+var valid_clicks = new Set([null]);
+var highlights = [];
+
+function clicked(pile) {
+	if (pile && !valid_clicks.has(pile)) return;
+	if (options_opened) return;
+	valid_clicks.clear();
+
+	highlights = [];
+
+	switch (state) {
+
+		case STATE_ZERO: {
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			state = STATE_BUILD_DRAW;
+			break;
+		}
+
+		case STATE_BUILD_DRAW: {
+			const card = Pile.get("Deck").topCard;
+			card.flip;
+			highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+			if (card.value > 10) {
+				highlights.push(["Extra", HIGHLIGHT_TOEXTRAR]);
+				state = STATE_BUILD_ROYAL;
+			} else {
+				const grids = Pile.getGrids().filter(pile => !pile.length && pile.name !== "Grid22");
+				for (const pile of grids) {
+					highlights.push([pile, HIGHLIGHT_BUILD]);
+					if (!Config.place_anygrid) break;
+				}
+				state = STATE_BUILD_CARD;
+			}
+			break;
+		}
+
+		case STATE_BUILD_ROYAL: {
+			const card = Pile.get("Deck").pop();
+			Pile.get("Extra").push(card);
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			state = STATE_BUILD_DRAW;
+			break;
+		}
+
+		case STATE_BUILD_CARD: {
+			const card = Pile.get("Deck").pop();
+			pile.push(card);
+			if (Pile.getGrids().filter(pile => !pile.length && pile.name !== "Grid22").length) {
+				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+				state = STATE_BUILD_DRAW;
+			} else {
+				if (Pile.get("Extra").length) {
+					state = STATE_BUILD_ENEMY;
+					highlights.push(["Extra", HIGHLIGHT_EXTRA, false]);
+					findEnemyPos(Pile.get("Extra").topCard).forEach(pile => highlights.push([pile, HIGHLIGHT_NEWENEMY]));
+				} else {
+					state = STATE_MAIN_DRAW;
+					highlights.push(["Deck", HIGHLIGHT_DRAW]);
+				}
+			}
+			break;
+		}
+
+		case STATE_BUILD_ENEMY: {
+			const card = Pile.get("Extra").pop();
+			pile.push(card);
+			if (Pile.get("Extra").length) {
+				state = STATE_BUILD_ENEMY;
+				highlights.push(["Extra", HIGHLIGHT_EXTRA, false]);
+				findEnemyPos(Pile.get("Extra").topCard).forEach(pile => highlights.push([pile, HIGHLIGHT_NEWENEMY]));
+			} else {
+				state = STATE_MAIN_DRAW;
+				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			}
+			break;
+		}
+
+		case STATE_MAIN_DRAW: {
+			if ( !pile.topCard ) {
+				// after ran out of cards in deck: choose a stack. Put its top card on Shame Pile, take the rest as new deck.
+				// IDEA: allow to take decks with only one card (to make empty stacks)
+				Pile.getGrids().forEach(pile => {
+					if (pile.length > 1) highlights.push([pile, HIGHLIGHT_RANOUT]);
+				});
+				if (!highlights.length) {
+					state = STATE_FINISHED_L1;
+					repaint_all();
+					alert("YOU LOSE!");
+					break;
+				}
+				state = STATE_MAIN_RANOUT;
+				break;
+			}
+			const card = pile.topCard.flip;
+			if (card.value > 10) {
+				// if royal: put on some attack position
+				state = STATE_MAIN_ENEMY;
+				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+				findEnemyPos(card).forEach(pile => highlights.push([pile, HIGHLIGHT_NEWENEMY]));
+			} else {
+				// piles with active enemies
+				const enemies = Pile.getRoyals().filter( pile => pile.topCard && pile.topCard.shown );
+
+				if (!enemies.length) {
+					// if no enemies left, put on extra deck
+					state = STATE_MAIN_EXTRA;
+					highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+					highlights.push(["Extra", HIGHLIGHT_TOEXTRA]);
+				} else if (card.value <= 1) {
+					// - if Ace or Joker, must be put on any grid pile.
+					state = STATE_MAIN_JOKER;
+					highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+
+					const restrict = card.value ? Config.ace_color : Config.joker_color; // 2:same suit, 1:same color
+
+					let possiblePiles = [];
+					if (restrict >= 2 && !possiblePiles.length && card.suit !== null) {
+						// must be same suit
+						possiblePiles = Pile.getGrids().filter(pile => pile.length && pile.topCard.suit === card.suit);
+					}
+					if (restrict >= 1 && !possiblePiles.length && card.color !== null) {
+						// must be same color
+						possiblePiles = Pile.getGrids().filter(pile => pile.length && pile.topCard.color === card.color);
+					}
+					if (!possiblePiles.length) {
+						// must have a card
+						possiblePiles = Pile.getGrids().filter(pile => pile.length);
+					}
+					if (!possiblePiles.length) {
+						// just in case all piles are empty
+						possiblePiles = Pile.getGrids();
+					}
+
+					possiblePiles.forEach(pile => highlights.push([pile, HIGHLIGHT_CLEAR]));
+				} else {
+					// valid grid positions for the current card
+					const grids = Pile.getGrids().filter( pile => !pile.topCard || pile.topCard.value <= card.value );
+
+					if (grids.length) {
+						// can be put on any grid card of same or lesser value
+						state = STATE_MAIN_TOGRID;
+						highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+						grids.forEach(pile => highlights.push([pile, HIGHLIGHT_TOGRID]));
+					} else {
+						// can be put on any enemy or in the 'shame' pile
+						highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+						enemies.forEach(pile => highlights.push([pile, HIGHLIGHT_ARMOR]));
+						highlights.push(["Shame", HIGHLIGHT_SHAME]);
+						state = STATE_MAIN_SHAME;
+					}
+				}
+			}
+			break;
+		}
+
+		case STATE_MAIN_ENEMY: {
+			const card = Pile.get("Deck").pop();
+			pile.push(card);
+
+			// move extra deck into main deck
+			if (Pile.get("Extra").length) {
+				state = STATE_MAIN_NENEMY;
+				highlights.push(["Extra", HIGHLIGHT_NENEMY]);
+			} else {
+				state = STATE_MAIN_DRAW;
+				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			}
+			break;
+		}
+
+		case STATE_MAIN_NENEMY: {
+			add2deck(Pile.get("Extra"));
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_MAIN_EXTRA: {
+			const card = Pile.get("Deck").pop();
+			pile.push(card);
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_MAIN_JOKER: {
+			const card = Pile.get("Deck").pop();
+
+			let discard = false;
+
+			if ( (card.value === 0 && Config.joker_once) || (card.value === 1 && Config.ace_once) ) {
+				discard = true;
+				// ace/joker must be discarded unless pile is empty or has a single joker or ace
+				if ( pile.length === 0 || (pile.length === 1 && pile.topCard.value <= 1) )
+					discard = false;
+			}
+
+			// get all cards in pile and add to Deck
+			add2deck(pile);
+
+			// put ace/joker in pile, unless discarded
+			if (!discard) pile.push(card);
+
+			// check destroyed enemies
+			checkAttacks(pile);
+
+			// check win condition
+			if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 ) {
+				state = STATE_FINISHED_W;
+				repaint_all();
+				alert("YOU WIN!");
+				break;
+			}
+
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_MAIN_TOGRID: {
+			const card = Pile.get("Deck").pop();
+			pile.push(card);
+
+			// check destroyed enemies
+			checkAttacks(pile);
+
+			// check win condition
+			if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 ) {
+				state = STATE_FINISHED_W;
+				repaint_all();
+				alert("YOU WIN!");
+				break;
+			}
+
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_MAIN_SHAME: {
+			const card = Pile.get("Deck").pop();
+			if (pile.name === "Shame") {
+				pile.push(card);
+				state = STATE_MAIN_CLEAR;
+				Pile.getGrids().forEach(pile => {
+					if (pile.length) highlights.push([pile, HIGHLIGHT_CLEAR]);
+				});
+				break;
+			} else {
+				pile.unshift(card);
+				if (!Config.armor_pierce) {
+					// check if enemy became unkillable
+					if (pile.totalValue > 20 || (pile.totalValue === 20 && pile.topCard.value === 13)) {
+						state = STATE_FINISHED_L2;
+						repaint_all();
+						alert("YOU LOSE!");
+						break;
+					}
+				}
+				state = STATE_MAIN_DRAW;
+				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			}
+			break;
+		}
+
+		case STATE_MAIN_CLEAR: {
+			// get all cards in pile and add to Deck
+			add2deck(pile);
+
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_MAIN_RANOUT: {
+			// move top of pile to shame, rest to deck
+			Pile.get("Shame").push( pile.pop() );
+			add2deck(pile);
+
+			state = STATE_MAIN_DRAW;
+			highlights.push(["Deck", HIGHLIGHT_DRAW]);
+			break;
+		}
+
+		case STATE_FINISHED_W:
+		case STATE_FINISHED_L1:
+		case STATE_FINISHED_L2:
+			break;
+
+		default:
+			alert("BAD STATE: "+state);
+			return;
+
+	}
+
+	// set help text
+	switch (state) {
+		case STATE_ZERO:        helpText = ""; break;
+		case STATE_BUILD_DRAW:  helpText = "Draw a card from main deck"; break;
+		case STATE_BUILD_ROYAL: helpText = "Place Royal on extra deck"; break;
+		case STATE_BUILD_CARD:  helpText = "Place card on grid pile"; break;
+		case STATE_BUILD_ENEMY: helpText = "Place Royal on enemy position"; break;
+		case STATE_MAIN_DRAW:   helpText = "Draw a card from main deck"; break;
+		case STATE_MAIN_ENEMY:  helpText = "Place Royal on enemy position"; break;
+		case STATE_MAIN_NENEMY: helpText = "Return extra deck to main deck"; break;
+		case STATE_MAIN_EXTRA:  helpText = "No enemies present. Send card to extra deck"; break;
+		case STATE_MAIN_JOKER:  helpText = "Pick a grid pile to reset"; break;
+		case STATE_MAIN_TOGRID: helpText = "Place card on grid pile"; break;
+		case STATE_MAIN_SHAME:  helpText = "Can't place card on any grid pile. Armor or Shame?"; break;
+		case STATE_MAIN_CLEAR:  helpText = "Pick a grid pile to reset"; break;
+		case STATE_MAIN_RANOUT: helpText = "Ran out of cards. Pick a grid pile to reset"; break;
+		case STATE_FINISHED_W:  helpText = "The Royals are dead! YOU WIN!"; break;
+		case STATE_FINISHED_L1: helpText = "Ran out of cards. YOU LOSE!"; break;
+		case STATE_FINISHED_L2: helpText = "The Royals are too powerful! YOU LOSE!"; break;
+		default:
+			helpText = ""; break;
+	}
+
+	repaint_all();
+
+	// autoclick Deck
+	if (Config.auto_draw) {
+		if (valid_clicks.size === 1 && valid_clicks.has(Pile.get("Deck")) && Pile.get("Deck").length)
+			clicked(Pile.get("Deck"));
+	}
+}
+
+var options_opened = false;
+function open_options() {
+	options_opened = true;
+	document.getElementById("options").style.display = "";
+	document.getElementById("option_btn").style.display = "none";
+
+	for (let key in Config) {
+		if (Config[key] === true || Config[key] === false)
+			document.getElementById(key).checked = Config[key];
+		else
+			document.getElementById(key).value = Config[key];
+	}
+}
+
+function close_options(newgame) {
+	for (let key in Config) {
+		if (Config[key] === true || Config[key] === false)
+			Config[key] = !!document.getElementById(key).checked;
+		else
+			Config[key] = +document.getElementById(key).value;
+	}
+
+	document.getElementById("option_btn").style.display = "";
+	document.getElementById("options").style.display = "none";
+	options_opened = false;
+
+
+	resize_canvas();
+	window.onresize();
+
+	if (newgame)
+		new_game();
+
+	repaint_all();
+}
+
+function set_options(diff) {
+	for (let key in Config) {
+		if (Config[key] === true || Config[key] === false) continue;
+
+		let theSelect = document.getElementById(key);
+		if (diff === 0)
+			theSelect.value = theSelect.options[ 0 ].value;
+		if (diff === 1)
+			theSelect.value = ConfigDefault[key];
+		if (diff === 2)
+			theSelect.value = theSelect.options[ theSelect.options.length-1 ].value;
+	}
+}
+
+</script>
+
+</body></html>
+
