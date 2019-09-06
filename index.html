@@ -589,7 +589,7 @@ window.onload = () => {
 		const pile = findPile(x,y);
 		if (hovering === pile) return;
 		hovering = pile;
-		canvas.style.cursor = hovering ? "pointer" : "";
+		canvas.style.cursor = valid_clicks.has(hovering) ? "pointer" : "";
 		repaint_all(false);
 	}
 
