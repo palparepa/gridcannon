@@ -16,7 +16,7 @@
 </div>
 <div id="option_btn" style="position:fixed;top:0;right:0;color:#ccc;font-size:120%;background:#900;padding:5px 5px 10px 10px;border-radius: 0 0 0 20px;cursor:pointer" onclick="open_options()">options</div>
 
-<div id="options" style="position:fixed;top:0;right:0;color:white;background:#900;padding:15px 15px 20px 20px;border-radius: 0 0 0 20px;text-align:center;display:none;font-size:80%">
+<div id="options" style="position:absolute;top:0;right:0;color:white;background:#900;padding:15px 15px 20px 20px;border-radius: 0 0 0 20px;text-align:center;display:none;font-size:80%">
 	<b style="font-size:150%"><u>&nbsp;OPTIONS&nbsp;</u></b>
 	<table style="margin:2em auto"><tr><td valign="top">
 		<fieldset><legend>Display</legend>
@@ -828,7 +828,7 @@ const STATE_MAIN_DRAW   =  5; // main game. Waiting to draw
 const STATE_MAIN_ENEMY  =  6; // main game. Waiting to put royal on attack position
 const STATE_MAIN_NENEMY =  7; // main game. New enemy! Flush extra into deck
 const STATE_MAIN_EXTRA  =  8; // main game. No enemies. Send deck to extra
-const STATE_MAIN_JOKER  =  9; // main game. Ace or Jokes. Put on grid
+const STATE_MAIN_JOKER  =  9; // main game. Ace or Joker. Put on grid
 const STATE_MAIN_TOGRID = 10; // main game. Put card on grid pile
 const STATE_MAIN_SHAME  = 11; // main game. Can't place card. Shame or armor?
 const STATE_MAIN_CLEAR  = 12; // main game. After shaming, clear a grid pile
@@ -1183,8 +1183,7 @@ function clicked(pile) {
 					possiblePiles = Pile.getGrids().filter(pile => pile.length && pile.topCard.color === card.color);
 				if (!possiblePiles.length) // must have a card
 					possiblePiles = Pile.getGrids().filter(pile => pile.length);
-				if (!possiblePiles.length) // just in case all piles are empty
-					possiblePiles = Pile.getGrids();
+				Pile.getGrids().filter(pile => !pile.length).forEach(pile => possiblePiles.push(pile)); // add all empty piles
 
 				possiblePiles.forEach(pile => highlights.push([pile, HIGHLIGHT_CLEAR]));
 				break;
