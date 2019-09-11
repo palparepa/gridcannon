@@ -1341,9 +1341,10 @@ function do_animation() {
 	repaint_all(false);
 	if (animations.length) {
 		animations.shift()();
-	} else if (valid_clicks.size === 1) {
-		animating = false;
-
+		return;
+	}
+	animating = false;
+	if (valid_clicks.size === 1) {
 		// check for automatic forced moves
 		let autoclick = false;
 		if (Config.auto_draw)
