@@ -2,6 +2,10 @@
 <html><head>
 	<title>Kill the Royals</title>
 	<meta charset="UTF-8">
+	<script type="text/javascript" src="animate.js"></script>
+	<script type="text/javascript" src="card.js"></script>
+	<script type="text/javascript" src="config.js"></script>
+	<script type="text/javascript" src="highlight.js"></script>
 	<style>
 		fieldset table td:first-child { text-align:right }
 		fieldset table td:last-child { text-align:left }
@@ -14,10 +18,11 @@
 	Based on <a href="https://www.pentadact.com/2019-08-20-gridcannon-a-single-player-game-with-regular-playing-cards/" target="_blank" style="color:yellow">Gridcannon</a> by Tom Francis.
 	<br>Check link for instructions.
 </div>
-<div id="option_btn" style="position:fixed;top:0;right:0;color:#ccc;font-size:120%;background:#900;padding:5px 5px 10px 10px;border-radius: 0 0 0 20px;cursor:pointer" onclick="open_options()">options</div>
-<div style="position:fixed;bottom:0;right:0;color:#444;font-size:80%;background:#222;padding:5px 5px 5px 5px;border-radius: 10px 0 0 0">v1.0.4</div>
+<div id="option_btn" style="position:fixed;top:0;right:0;color:#ccc;font-size:120%;background:#900;padding:5px 5px 10px 10px;border-radius: 0 0 0 20px;cursor:pointer" onclick="Options.open()">options</div>
+<div style="position:fixed;bottom:0;right:0;color:#444;font-size:80%;background:#222;padding:5px 5px 5px 5px;border-radius: 10px 0 0 0">v1.0.5</div>
 
 <div id="options" style="position:absolute;top:0;right:0;color:white;background:#900;padding:15px 15px 20px 20px;border-radius: 0 0 0 20px;text-align:center;display:none;font-size:80%">
+	<div style="float:right;border:1px solid white;padding:0 2px;cursor:pointer" onclick="Options.close()">X</div>
 	<b style="font-size:150%"><u>&nbsp;OPTIONS&nbsp;</u></b>
 	<table style="margin:2em auto"><tr><td valign="top">
 		<fieldset><legend>Display</legend>
@@ -38,13 +43,13 @@
 	</td><td valign="top" rowspan="3">
 		<fieldset><legend>Rules</legend>
 			<table><tr>
-				<td>Maximum value card</td>
+				<td>Maximum value card:</td>
 				<td><select id="max_value"><option value="10">10</option><option value="9">9</option><option value="8">8</option></select></td>
 			</tr><tr>
-				<td>Number of Joker pairs</td>
+				<td>Number of Joker pairs:</td>
 				<td><select id="num_jokers"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></td>
 			</tr><tr>
-				<td>Number of Blue Jokers</td>
+				<td>Number of Blue Jokers:</td>
 				<td><select id="free_joker"><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></td>
 			</tr><tr>
 				<td>While building, place cards</td>
@@ -56,7 +61,7 @@
 				<td>Place enemies</td>
 				<td><select id="place_anyenemy"><option value="1">anywhere</option><option value="0">near most similar card</option></select></td>
 			</tr><tr>
-				<td>When adding cards to deck</td>
+				<td>When adding cards to deck,</td>
 				<td><select id="deck_shuffle"><option value="0">don't shuffle</option><option value="1">shuffle new cards</option><option value="2">shuffle whole deck</option></select></td>
 			</tr><tr>
 				<td>On pile reset, jokers</td>
@@ -74,7 +79,17 @@
 				<td>Attacks</td>
 				<td><select id="armor_pierce"><option value="1">can remove armor</option><option value="0">must kill enemy</option></select></td>
 			</tr></table>
-			<!-- <button onclick="set_options(0)">Easiest</button> <button onclick="set_options(1)">Standard</button> <button onclick="set_options(2)">Hardest</button> -->
+			<!-- <button onclick="Options.preset(0)">Easiest</button> <button onclick="Options.preset(1)">Standard</button> <button onclick="Options.preset(2)">Hardest</button> -->
+		</fieldset>
+	</td></tr><tr><td>
+		<fieldset><legend>Appearance</legend>
+			<table><tr>
+				<td>Deck style:</td><td><select id="deck_style">
+					<option value="0">Type 1</option>
+					<option value="1">Type 2</option>
+					<option value="2">Type 3</option>
+				</select></td>
+			</tr></table>
 		</fieldset>
 	</td></tr><tr><td valign="bottom">
 		<fieldset><legend>Automation</legend>
@@ -90,51 +105,17 @@
 			</tr></table>
 		</fieldset>
 	</td></tr></table>
-	<button style="font-size:100%;padding:3px 2em;margin:0 1em" onclick="close_options(true)">Start New Game</button>
-	<button style="font-size:100%;padding:3px 2em;margin:0 1em" onclick="close_options(false)">Close</button>
+	<button style="font-size:100%;padding:3px 1.5em;margin:0 1em" onclick="Options.close(true)">Start New Game</button>
+	<button style="font-size:100%;padding:3px 1.5em;margin:0 1em" onclick="Options.close(false)">Apply Changes</button>
 
 </div>
 
 <script>
 "use strict";
 
-var ANIMATION_TIME = 15;
-
-const Config = {
-	// display
-	show_help:   true, // show help
-	show_hover: false, // show info on grid and royals, when hovering
-	show_light:  true, // highlights playable cards
-	animation:   true, // show animations
-
-	// automation
-	auto_draw:  false, // automatically draw card from deck (if it's the only option and it has cards available)
-	auto_build: false, // automatically perform forced building moves
-	auto_space:  true, // if there is a single option available, tap 'space' to play it
-
-	// rules
-	max_value:     10, // use card numbers up to this value (8, 9 or 10)
-	num_jokers:     1, // jokers of each color
-	free_joker:     0, // blue jokers
-	place_anygrid:  0, // on building phase, allow to place card in any empty grid pile
-	skip_center:    1, // on building phase, do not fill the center
-	place_anyenemy: 0, // allow placing royals on any enemy position
-	deck_shuffle:   0, // shuffle cards when adding to deck? 0:no, 1:yes, 2:shuffle whole deck
-	joker_once:     0, // when resetting a pile, a joker is removed (except when played over an ace, joker, or empty grid)
-	ace_once:       0, // when resetting a pile, an ace is removed (except when played over an ace, joker, or empty grid)
-	joker_color:    0, // jokers must be played, preferently, on pile of the same color
-	ace_color:      0, // ace must be played, preferently, on pile of the same color. if 2, on pile of the same suit
-	armor_pierce:   0, // when an enemy is attacked but not killed, if damage was enough to kill it without armor, remove last card armor (removes 'enemy too strong' lose condition)
-};
-const ConfigDefault = {};
-for (let key in Config) ConfigDefault[key] = Config[key];
-
 var helpText = "";
 var hovering = null;
 
-
-var sprites = new Image();
-sprites.src = "cards.png";
 
 var canvas = document.getElementById("canvas");
 var canvas2 = document.getElementById("canvas2");
@@ -142,55 +123,54 @@ var ctx = canvas.getContext("2d");
 var ctx2 = canvas2.getContext("2d");
 
 
-const W = 140;
-const H = 190;
-const S = 5; // small separation between grid cards
-const SS = 20; // medium separation between grid and royals
-const SSS = 50; // big separation between areas
-const BORDER = 10;
-const HELPSIZE = 50;
 
-// position of central card
-const Cx = BORDER + W*3 + S+SS + SSS + H;
-const Cy = BORDER + H*3 + S+SS;
+var S; // small separation between grid cards
+var SS; // medium separation between grid and royals
+var SSS; // big separation between areas
+var BORDER;
+var HELPSIZE; // height of help bar
+var TEXTFONT; // text font
+var HOVERFONT; // text font, for hovers
 
-// position of shame pile
-const Sx = Cx+Cx-H/2 - BORDER;
-const Sy = BORDER + W;
+var Cx,Cy; // position of central card
+var Sx,Sy; // position of shame pile
+var Dx,Dy; // position of main deck
 
-// position of main deck
-const Dx = BORDER + H/2;
-const Dy = Cy;
+
+function calc_sizes() {
+	SSS = Math.ceil(Card.WIDTH/3); // big separation between areas
+	SS = Math.ceil(SSS/2); // medium separation between grid and royals
+	S = Math.ceil(SS/4); // small separation between grid cards
+	BORDER = S*2;
+	HELPSIZE = BORDER*6;
+	TEXTFONT = (HELPSIZE / 2) + "px serif";
+	HOVERFONT = "bold " + (HELPSIZE / 2.5) + "px serif";
+
+	// position of central card
+	Cx = BORDER + Card.WIDTH*3 + S+SS + SSS + Card.HEIGHT;
+	Cy = BORDER + Card.HEIGHT*3 + S+SS;
+
+	// position of shame pile
+	Sx = Cx+Cx-Card.HEIGHT/2 - BORDER;
+	Sy = BORDER + Card.WIDTH;
+
+	// position of main deck
+	Dx = BORDER + Card.HEIGHT/2;
+	Dy = Cy;
+}
+calc_sizes();
 
 
 function resize_canvas() {
-	canvas.width = BORDER*2 + W*6+S*2+SS*2+SSS*2+H*2;
-	canvas.height = BORDER*2 + H*6+S*2+SS*2 + Config.show_help*HELPSIZE;
+	canvas.width = BORDER*2 + Card.WIDTH*6+S*2+SS*2+SSS*2+Card.HEIGHT*2;
+	canvas.height = BORDER*2 + Card.HEIGHT*6+S*2+SS*2 + Config.show_help*HELPSIZE;
 	canvas2.width = canvas.width;
 	canvas2.height = canvas.height;
 
-	ctx.font = "30px serif";
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
 }
 resize_canvas();
-
-
-const backSprite = [16,2];
-const HIGHLIGHT_DRAW = "yellow"; // draw from main deck (clickable)
-const HIGHLIGHT_DRAWTO = "blue"; // moving from main deck
-const HIGHLIGHT_SHAME = "red"; // send to shame (clickable)
-const HIGHLIGHT_CLEAR = "cyan"; // clear a grid (clickable)
-const HIGHLIGHT_EXTRA = "blue"; // moving royal from extra
-const HIGHLIGHT_TOEXTRAR = "yellow"; // moving royal to extra (clickable)
-const HIGHLIGHT_TOEXTRA = "yellow"; // moving card to extra (clickable)
-const HIGHLIGHT_NENEMY = "yellow"; // flush extra into main deck (clickable)
-const HIGHLIGHT_ARMOR = "red"; // send to armor (clickable)
-const HIGHLIGHT_BUILD = "white"; // send card to play area while building (clickable)
-const HIGHLIGHT_NEWENEMY = "white"; // send royal to play area (clickable)
-const HIGHLIGHT_TOGRID = "yellow"; // send card to play area (clickable)
-const HIGHLIGHT_RANOUT = "red"; // clear a grid after ran out of cards (clickable)
-
 
 
 
@@ -219,90 +199,12 @@ let canvasH;
 
 
 
-class Card {
-	// suits
-	static get Diamonds() { return ["♦",  "R",  0]; }
-	static get Hearts()   { return ["♥",  "R",  1]; }
-	static get Spades()   { return ["♠",  "B",  2]; }
-	static get Clubs()    { return ["♣",  "B",  3]; }
-	// "suits" for jokers
-	static get Red()      { return [null, "R",  0]; }
-	static get Black()    { return [null, "B",  1]; }
-	static get Blue()     { return [null, null, 2]; }
-
-	constructor(value,suit,color, frontSprite,backSprite, shown=false) {
-		this._value = value;
-		this._suit = suit;
-		this._color = color;
-		this._frontSprite = frontSprite;
-		this._backSprite = backSprite;
-		this._shown = shown;
-	}
-	static newValueCard(value, [suit,color,Y], backSprite, shown=false) {
-		return new Card(value,suit,color,[value,Y],backSprite, shown);
-	}
-	get value() {
-		return this._value;
-	}
-	get suit() {
-		return this._suit;
-	}
-	get color() {
-		return this._color;
-	}
-	get sprite() {
-		return this._shown ? this._frontSprite : this._backSprite;
-	}
-	get shown() {
-		return this._shown;
-	}
-	get show() {
-		this._shown = true;
-		return this;
-	}
-	get hide() {
-		this._shown = false;
-		return this;
-	}
-	get flip() {
-		this._shown = !this._shown;
-		return this;
-	}
-
-	static get build_deck() {
-		const deck = [];
-
-		// value cards
-		[Card.Diamonds, Card.Hearts, Card.Spades, Card.Clubs].forEach(suit => {
-			for (let value = 1; value <= 13; value++) {
-				if (value < 11 && value > Config.max_value) continue;
-				deck.push(Card.newValueCard(value, suit, backSprite, true));
-			}
-		})
-
-		// jokers
-		for (let i=0; i<Config.num_jokers; i++) {
-			deck.push(Card.newValueCard(0, Card.Black, backSprite, true));
-			deck.push(Card.newValueCard(0, Card.Red,   backSprite, true));
-		}
-		for (let i=0; i<Config.free_joker; i++) {
-			deck.push(Card.newValueCard(0, Card.Blue,  backSprite, true));
-		}
-
-		return deck;
-	}
-
-	// a special 'card' to show the outline of a card
-	static get none() {
-		return new Card(null,null,null, [0,3], [0,3]);
-	}
-}
 
 
 // represents a pile of cards
 // a pile has a position on the canvas, and a "spill area" on where to paint extra cards
 class Pile {
-	constructor(name,type, [x,y], [spillX,spillY]=[0,0], spillSingle=Math.max(Math.abs(spillX),Math.abs(spillY)), spillMax=Infinity) {
+	constructor(name,type) {
 		this._name = name;
 		this._type = type;
 		// card list
@@ -311,6 +213,10 @@ class Pile {
 		this._outline = false;
 		// rotation
 		this._rotate = false;
+
+		Pile.list.set(name, this);
+	}
+	setPosition([x,y], [spillX,spillY]=[0,0], spillSingle=Math.max(Math.abs(spillX),Math.abs(spillY)), spillMax=Infinity) {
 		// where to show card?
 		this._x = x;
 		this._y = y;
@@ -326,7 +232,7 @@ class Pile {
 
 			// desired space until next card
 			this._spillSingle = Math.abs(spillSingle);
-			const maxSingle = this._spillX ? W : H;
+			const maxSingle = this._spillX ? Card.WIDTH : Card.HEIGHT;
 			if (!this._spillSingle || this._spillSingle>maxSingle)
 				this._spillSingle = maxSingle;
 			// show no more than this number of cards
@@ -336,13 +242,14 @@ class Pile {
 			this._spillMax = 0;
 		}
 
-		Pile.list.set(name, this);
+		return this;
 	}
+
 	get showOutline() { this._outline = true;  return this; }
 	get hideOutline() { this._outline = false; return this; }
 	get sideways() { this._rotate = true; return this; }
 	isHere(x,y) {
-		const [width,height] = this._rotate ? [H,W] : [W,H];
+		const [width,height] = this._rotate ? [Card.HEIGHT,Card.WIDTH] : [Card.WIDTH,Card.HEIGHT];
 
 		// is the main card in the given coordinates?
 		if (x < this._x-width/2 || y < this._y-height/2) return false;
@@ -370,16 +277,17 @@ class Pile {
 		if (!this.length) return;
 		if (this._type !== "C" && this._type !== "R") return;
 
-		const grad = ctx.createRadialGradient(this._x,this._y,0, this._x,this._y,Math.max(W,H));
+		const grad = ctx.createRadialGradient(this._x,this._y,0, this._x,this._y,Math.max(Card.WIDTH,Card.HEIGHT));
 
 		if (this._type === "C") {
 			// show number of cards
 			grad.addColorStop(0, "rgba(0,0,255,.7)");
 			grad.addColorStop(1, "rgba(0,0,255,.2)");
 			ctx.fillStyle = grad;
-			ctx.fillRect(this._x-W/2, this._y-H/2, W,H);
+			ctx.fillRect(this._x-Card.WIDTH/2, this._y-Card.HEIGHT/2, Card.WIDTH,Card.HEIGHT);
 
 			ctx.fillStyle = "white";
+			ctx.font = HOVERFONT;
 			if (this.length>1)
 				ctx.fillText( this.length+" cards", this._x, this._y );
 			else
@@ -391,9 +299,10 @@ class Pile {
 			grad.addColorStop(0, "rgba(255,0,0,.7)");
 			grad.addColorStop(1, "rgba(255,0,0,.2)");
 			ctx.fillStyle = grad;
-			ctx.fillRect(this._x-W/2, this._y-H/2, W,H);
+			ctx.fillRect(this._x-Card.WIDTH/2, this._y-Card.HEIGHT/2, Card.WIDTH,Card.HEIGHT);
 
 			ctx.fillStyle = "white";
+			ctx.font = HOVERFONT;
 			ctx.fillText( "Life: "+this.totalValue, this._x, this._y );
 		}
 	}
@@ -406,35 +315,30 @@ class Pile {
 		}
 	}
 
-	static paint(card, x,y) {
-		const [sx,sy] = card.sprite;
-		ctx.drawImage(sprites, sx*W,sy*H,W,H, x,y,W,H);
-	}
-
 	paint() {
 		ctx.save();
-		ctx.translate(this._x, this._y);
-		if (this._rotate) ctx.rotate(Math.PI/2);
+		ctx.positionCard(this._x, this._y, this._rotate);
 
-		if (0) {
-			ctx.fillStyle = "blue";
-			ctx.fillRect(Math.min(this._spillX,0)-W/2, Math.min(this._spillY,0)-H/2, W+Math.abs(this._spillX,0),H+Math.abs(this._spillY,0));
+		if (0) { // debug to show the 'spill' areas
+			ctx.fillStyle = "rgba(0,0,255,.3)";
+			ctx.fillRect(Math.min(this._spillX,0)-Card.WIDTH/2, Math.min(this._spillY,0)-Card.HEIGHT/2, Card.WIDTH+Math.abs(this._spillX,0),Card.HEIGHT+Math.abs(this._spillY,0));
+			ctx.fillRect(-Card.WIDTH/2, -Card.HEIGHT/2, Card.WIDTH,Card.HEIGHT);
 		}
 
 		if (!this._cards.length) {
 			if (this._outline)
-				Pile.paint(Card.none, -W/2,-H/2);
+				ctx.paintCard(Card.none);
 		} else if (this._cards.length === 1 || !this._spillMax) {
-			Pile.paint(this._cards[this._cards.length-1], -W/2,-H/2);
+			ctx.paintCard(this._cards[this._cards.length-1]);
 		} else {
 			const toShow = this._cards.slice(-(1+this._spillMax));
 			const extras = toShow.length - 1;
 			let [dx,dy] = [this._spillX/extras,this._spillY/extras];
 			if (Math.abs(dx) > this._spillSingle) dx = this._spillSingle * Math.sign(dx);
 			if (Math.abs(dy) > this._spillSingle) dy = this._spillSingle * Math.sign(dy);
-			let [sx,sy] = [dx*extras-W/2, dy*extras-H/2];
+			let [sx,sy] = [dx*extras, dy*extras];
 			toShow.forEach(card => {
-				Pile.paint(card, sx,sy);
+				ctx.paintCard(card, sx,sy);
 				sx -= dx;
 				sy -= dy;
 			});
@@ -443,17 +347,12 @@ class Pile {
 		ctx.restore();
 	}
 
-	highlight(color) {
-		if (!Config.show_light) return;
-
+	fillRect(color) {
 		ctx2.fillStyle = color;
 
 		ctx2.save();
-		ctx2.translate(this._x, this._y);
-		if (this._rotate) ctx2.rotate(Math.PI/2);
-
-		ctx2.fillRect(-W/2, -H/2, W,H);
-
+		ctx2.positionCard(this._x, this._y, this._rotate);
+		ctx2.fillRect(-Card.WIDTH/2, -Card.HEIGHT/2, Card.WIDTH,Card.HEIGHT);
 		ctx2.restore();
 	}
 
@@ -478,37 +377,71 @@ class Pile {
 	static clearAll() {
 		Pile.list.forEach(pile => pile._cards = []);
 	}
+
+	static setup() {
+		new Pile("RoyalT1","R");
+		new Pile("RoyalT2","R");
+		new Pile("RoyalT3","R");
+		new Pile("RoyalB1","R");
+		new Pile("RoyalB2","R");
+		new Pile("RoyalB3","R");
+		new Pile("RoyalR1","R");
+		new Pile("RoyalR2","R");
+		new Pile("RoyalR3","R");
+		new Pile("RoyalL1","R");
+		new Pile("RoyalL2","R");
+		new Pile("RoyalL3","R");
+
+		new Pile("Grid11","C").showOutline;
+		new Pile("Grid21","C").showOutline;
+		new Pile("Grid31","C").showOutline;
+		new Pile("Grid12","C").showOutline;
+		new Pile("Grid22","C").showOutline;
+		new Pile("Grid32","C").showOutline;
+		new Pile("Grid13","C").showOutline;
+		new Pile("Grid23","C").showOutline;
+		new Pile("Grid33","C").showOutline;
+
+		new Pile("Deck",null).showOutline.sideways;
+		new Pile("Extra",null).sideways;
+
+		new Pile("Shame",null).sideways;
+	}
+	static setPositions() {
+		Pile.get("RoyalT1").setPosition([Cx-1*(Card.WIDTH+S), Cy-2*Card.HEIGHT-S-SS], [0,-Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalT2").setPosition([Cx+0*(Card.WIDTH+S), Cy-2*Card.HEIGHT-S-SS], [0,-Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalT3").setPosition([Cx+1*(Card.WIDTH+S), Cy-2*Card.HEIGHT-S-SS], [0,-Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalB1").setPosition([Cx-1*(Card.WIDTH+S), Cy+2*Card.HEIGHT+S+SS], [0, Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalB2").setPosition([Cx+0*(Card.WIDTH+S), Cy+2*Card.HEIGHT+S+SS], [0, Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalB3").setPosition([Cx+1*(Card.WIDTH+S), Cy+2*Card.HEIGHT+S+SS], [0, Card.HEIGHT/2], Card.HEIGHT/4);
+		Pile.get("RoyalR1").setPosition([Cx+2*Card.WIDTH+S+SS, Cy-1*(Card.HEIGHT+S)], [ Card.WIDTH/2,0], Card.WIDTH/4);
+		Pile.get("RoyalR2").setPosition([Cx+2*Card.WIDTH+S+SS, Cy+0*(Card.HEIGHT+S)], [ Card.WIDTH/2,0], Card.WIDTH/4);
+		Pile.get("RoyalR3").setPosition([Cx+2*Card.WIDTH+S+SS, Cy+1*(Card.HEIGHT+S)], [ Card.WIDTH/2,0], Card.WIDTH/4);
+		Pile.get("RoyalL1").setPosition([Cx-2*Card.WIDTH-S-SS, Cy-1*(Card.HEIGHT+S)], [-Card.WIDTH/2,0], Card.WIDTH/4);
+		Pile.get("RoyalL2").setPosition([Cx-2*Card.WIDTH-S-SS, Cy+0*(Card.HEIGHT+S)], [-Card.WIDTH/2,0], Card.WIDTH/4);
+		Pile.get("RoyalL3").setPosition([Cx-2*Card.WIDTH-S-SS, Cy+1*(Card.HEIGHT+S)], [-Card.WIDTH/2,0], Card.WIDTH/4);
+
+		Pile.get("Grid11").setPosition([Cx-1*(Card.WIDTH+S), Cy-1*(Card.HEIGHT+S)]);
+		Pile.get("Grid21").setPosition([Cx+0*(Card.WIDTH+S), Cy-1*(Card.HEIGHT+S)]);
+		Pile.get("Grid31").setPosition([Cx+1*(Card.WIDTH+S), Cy-1*(Card.HEIGHT+S)]);
+		Pile.get("Grid12").setPosition([Cx-1*(Card.WIDTH+S), Cy+0*(Card.HEIGHT+S)]);
+		Pile.get("Grid22").setPosition([Cx+0*(Card.WIDTH+S), Cy+0*(Card.HEIGHT+S)]);
+		Pile.get("Grid32").setPosition([Cx+1*(Card.WIDTH+S), Cy+0*(Card.HEIGHT+S)]);
+		Pile.get("Grid13").setPosition([Cx-1*(Card.WIDTH+S), Cy+1*(Card.HEIGHT+S)]);
+		Pile.get("Grid23").setPosition([Cx+0*(Card.WIDTH+S), Cy+1*(Card.HEIGHT+S)]);
+		Pile.get("Grid33").setPosition([Cx+1*(Card.WIDTH+S), Cy+1*(Card.HEIGHT+S)]);
+
+		Pile.get("Deck").setPosition([Dx,Dy]);
+		Pile.get("Extra").setPosition([Dx,Dy+Card.HEIGHT+S],[Dy-Card.HEIGHT-S-Card.WIDTH/2-BORDER,0],Card.WIDTH/4,Infinity);
+
+		Pile.get("Shame").setPosition([Sx,Sy],[Cy*2-Sy*2,0],Card.WIDTH/4,Infinity);
+	}
 }
 Pile.list = new Map;
 
-new Pile("RoyalT1","R", [Cx-1*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
-new Pile("RoyalT2","R", [Cx+0*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
-new Pile("RoyalT3","R", [Cx+1*(W+S), Cy-2*H-S-SS], [0,-H/2], H/4);
-new Pile("RoyalB1","R", [Cx-1*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
-new Pile("RoyalB2","R", [Cx+0*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
-new Pile("RoyalB3","R", [Cx+1*(W+S), Cy+2*H+S+SS], [0, H/2], H/4);
-new Pile("RoyalR1","R", [Cx+2*W+S+SS, Cy-1*(H+S)], [ W/2,0], W/4);
-new Pile("RoyalR2","R", [Cx+2*W+S+SS, Cy+0*(H+S)], [ W/2,0], W/4);
-new Pile("RoyalR3","R", [Cx+2*W+S+SS, Cy+1*(H+S)], [ W/2,0], W/4);
-new Pile("RoyalL1","R", [Cx-2*W-S-SS, Cy-1*(H+S)], [-W/2,0], W/4);
-new Pile("RoyalL2","R", [Cx-2*W-S-SS, Cy+0*(H+S)], [-W/2,0], W/4);
-new Pile("RoyalL3","R", [Cx-2*W-S-SS, Cy+1*(H+S)], [-W/2,0], W/4);
+Pile.setup();
+Pile.setPositions();
 
-new Pile("Grid11","C", [Cx-1*(W+S), Cy-1*(H+S)]).showOutline;
-new Pile("Grid21","C", [Cx+0*(W+S), Cy-1*(H+S)]).showOutline;
-new Pile("Grid31","C", [Cx+1*(W+S), Cy-1*(H+S)]).showOutline;
-new Pile("Grid12","C", [Cx-1*(W+S), Cy+0*(H+S)]).showOutline;
-new Pile("Grid22","C", [Cx+0*(W+S), Cy+0*(H+S)]).showOutline;
-new Pile("Grid32","C", [Cx+1*(W+S), Cy+0*(H+S)]).showOutline;
-new Pile("Grid13","C", [Cx-1*(W+S), Cy+1*(H+S)]).showOutline;
-new Pile("Grid23","C", [Cx+0*(W+S), Cy+1*(H+S)]).showOutline;
-new Pile("Grid33","C", [Cx+1*(W+S), Cy+1*(H+S)]).showOutline;
-
-new Pile("Deck",null, [Dx,Dy]).showOutline.sideways;
-new Pile("Extra",null, [Dx,Dy+H+S],[Dy-H-S-W/2-BORDER,0],W/4,Infinity).sideways;
-
-//new Pile("Shame",null, [Sx,Sy],[W*6,0],W/4,Infinity).sideways;
-new Pile("Shame",null, [Sx,Sy],[Cy*2-Sy*2,0],W/4,Infinity).sideways;
 
 
 
@@ -520,15 +453,18 @@ function findPile(x,y) {
 
 function writeShame() {
 	const numShames = Pile.get("Shame").length;
-	ctx.fillStyle = "white";
-	if (numShames)
-		ctx.fillText("Shames: "+numShames, Sx,(Sy-W/2)/2);
+	if (numShames) {
+		ctx.fillStyle = "white";
+		ctx.font = TEXTFONT;
+		ctx.fillText("Shames: "+numShames, Sx,(Sy-Card.WIDTH/2)/2);
+	}
 }
 
 var flipping_deck = false; // ugly hack
 function writeLeft() {
-	ctx.fillStyle = 'white';
-	ctx.fillText("Left: "+(Pile.get("Deck").length+flipping_deck), Dx,(Dy-W/2)-32);
+	ctx.fillStyle = "white";
+	ctx.font = TEXTFONT;
+	ctx.fillText("Left: "+(Pile.get("Deck").length+flipping_deck), Dx,(Dy-Card.WIDTH/2)-32);
 }
 
 function writeHelp() {
@@ -536,127 +472,29 @@ function writeHelp() {
 		ctx.fillStyle = "rgba(0,0,255,.3)";
 		ctx.fillRect(0,Cy+Cy,canvas.width,HELPSIZE);
 		ctx.fillStyle = "white";
+		ctx.font = TEXTFONT;
 		ctx.fillText(helpText, Cx,Cy+Cy+HELPSIZE/2);
 	}
 }
 
-function repaint_all(rehighlight=true) {
+function repaint_all(rehigh) {
 	ctx.fillStyle = "#222";
 	ctx.fillRect(0,0,canvas.width,canvas.height);
 	ctx.fillStyle = "#333";
-	ctx.fillRect(Cx-W/2-S-W-SS-W-W/2-SSS/2,0,(W+S*2+W*2+SS*2+W*2+W+SSS),Cy+Cy);
+	ctx.fillRect(Cx-Card.WIDTH/2-S-Card.WIDTH-SS-Card.WIDTH-Card.WIDTH/2-SSS/2,0,(Card.WIDTH+S*2+Card.WIDTH*2+SS*2+Card.WIDTH*2+Card.WIDTH+SSS),Cy+Cy);
 	Pile.list.forEach(pile => pile.paint());
 	writeShame();
 	writeLeft();
 	writeHelp();
 
-	if (Config.show_hover && hovering) {
+	if (Config.show_hover && hovering)
 		hovering.paintTip();
-	}
 
-	if (rehighlight) {
-		clear_highlights();
-		highlights.forEach(([namepile,color,valid=true]) => {
-			const pile = (typeof namepile === "string") ? Pile.get(namepile) : namepile;
-			if (valid)
-				valid_clicks.add(pile);
-		});
-		start_highlights();
-	}
+	if (rehigh)
+		Highlight.start();
 }
 
 
-
-var options_opened = false;
-function open_options() {
-	options_opened = true;
-	document.getElementById("options").style.display = "";
-	document.getElementById("option_btn").style.display = "none";
-
-	for (let key in Config) {
-		if (Config[key] === true || Config[key] === false)
-			document.getElementById(key).checked = Config[key];
-		else
-			document.getElementById(key).value = Config[key];
-	}
-}
-
-function close_options(newgame) {
-	if (animating && newgame) return;
-
-	for (let key in Config) {
-		if (Config[key] === true || Config[key] === false)
-			Config[key] = !!document.getElementById(key).checked;
-		else
-			Config[key] = +document.getElementById(key).value;
-	}
-
-	document.getElementById("option_btn").style.display = "";
-	document.getElementById("options").style.display = "none";
-	options_opened = false;
-
-
-	resize_canvas();
-	window.onresize();
-
-	if (newgame)
-		new_game();
-	else
-		repaint_all();
-}
-
-function set_options(diff) {
-	for (let key in Config) {
-		if (Config[key] === true || Config[key] === false) continue;
-
-		let theSelect = document.getElementById(key);
-		if (diff === 0)
-			theSelect.value = theSelect.options[ 0 ].value;
-		if (diff === 1)
-			theSelect.value = ConfigDefault[key];
-		if (diff === 2)
-			theSelect.value = theSelect.options[ theSelect.options.length-1 ].value;
-	}
-}
-
-
-
-
-
-var opacity = 0;
-var opacity_d = null;
-var highlights = [];
-var high_timeout = null;
-function highlight_opacity() {
-	if (opacity <= 20) opacity_d = 2;
-	if (opacity >= 50) opacity_d = -2;
-	opacity = opacity + opacity_d;
-	canvas2.style.opacity = opacity/100;
-}
-function clear_highlights() {
-	opacity = 0;
-	ctx2.clearRect(0,0,canvas.width,canvas.height);
-	stop_highlight();
-}
-function stop_highlight() {
-	if (high_timeout) clearInterval(high_timeout);
-	ctx2.clearRect(0,0,canvas.width,canvas.height);
-	canvas2.style.opacity = 1;
-}
-function start_highlights() {
-	stop_highlight();
-	ctx2.clearRect(0,0,canvas.width,canvas.height);
-
-	highlights.forEach(([namepile,color]) => {
-		const pile = (typeof namepile === "string") ? Pile.get(namepile) : namepile;
-		pile.highlight(color);
-	});
-
-	highlight_opacity();
-	high_timeout = setInterval(() => {
-		highlight_opacity();
-	}, 50);
-}
 
 
 
@@ -676,7 +514,7 @@ window.onload = () => {
 		const pile = findPile(x,y);
 		if (hovering === pile) return;
 		hovering = pile;
-		canvas.style.cursor = valid_clicks.has(hovering) ? "pointer" : "";
+		canvas.style.cursor = Highlight.clickables.has(hovering) ? "pointer" : "";
 		repaint_all(false);
 	}
 
@@ -684,8 +522,8 @@ window.onload = () => {
 		// if a single card is clickable, click it when 'space' is pressed
 		if (!Config.auto_space) return;
 		if (e.keyCode !== 32) return;
-		if (valid_clicks.size !== 1) return;
-		clicked( valid_clicks.values().next().value );
+		if (Highlight.clickables.size !== 1) return;
+		clicked( Highlight.clickables.values().next().value );
 	}
 
 	new_game();
@@ -695,8 +533,9 @@ window.onload = () => {
 
 function new_game() {
 	state = STATE_ZERO;
+	Animate.cancel();
 	Pile.clearAll();
-	Card.build_deck.forEach(card => Pile.get("Deck").push(card.hide));
+	Card.build_deck(Config).forEach(card => Pile.get("Deck").push(card.hide));
 	Pile.get("Deck").shuffle();
 	clicked(null);
 }
@@ -777,17 +616,23 @@ function checkAttacks(pile) {
 		});
 
 		if (damage >= targetpile.totalValue) {
-			animate_destroy(target, targetpile);
-			then(() => {
+			Animate.destroy(pile.topCard, pile, 10);
+			Animate.destroy(Pile.get(ammo1).topCard, Pile.get(ammo1), 10);
+			Animate.destroy(Pile.get(ammo2).topCard, Pile.get(ammo2), 10);
+			Animate.destroy(target, targetpile, 30);
+			Animate.func(() => {
 				while (targetpile.length) targetpile.shift();
 			});
-			animate_flip(target, targetpile, false);
-			then(() => {
+			Animate.flip(target, targetpile, false);
+			Animate.func(() => {
 				targetpile.push(target.hide);
 			});
 		} else if (Config.armor_pierce && damage >= target.value) {
-			animate_destroy(targetpile.topCard, targetpile);
-			then(() => {
+			Animate.destroy(pile.topCard, pile, 10);
+			Animate.destroy(Pile.get(ammo1).topCard, Pile.get(ammo1), 10);
+			Animate.destroy(Pile.get(ammo2).topCard, Pile.get(ammo2), 10);
+			Animate.destroy(target, targetpile, 30);
+			Animate.func(() => {
 				targetpile.shift(); // remove one armor
 			});
 		}
@@ -802,14 +647,14 @@ function add2deck(pile) {
 	const card = pile.topCard; // to show in animation
 	const temp = [];
 
-	then(() => {
+	Animate.func(() => {
 		if (Config.deck_shuffle === 1) pile.shuffle();
 		while (pile.length)
 			temp.push(pile.shift());
 	});
-	animate_flip(card, pile, false);
-	animate_move(card, pile, Pile.get("Deck"), true);
-	then(() => {
+	Animate.flip(card, pile, false);
+	Animate.move(card, pile, Pile.get("Deck"), true);
+	Animate.func(() => {
 		while (temp.length)
 			Pile.get("Deck").unshift( temp.shift().hide );
 		if (Config.deck_shuffle === 2) Pile.get("Deck").shuffle();
@@ -839,17 +684,14 @@ const STATE_FINISHED_L1 = 15; // game ends (out of cards)
 const STATE_FINISHED_L2 = 16; // game ends (invincible enemy)
 
 var state = STATE_ZERO;
-var valid_clicks = new Set([null]);
 
 function clicked(pile) {
-	if (pile && !valid_clicks.has(pile)) return;
-	if (options_opened) return;
-	valid_clicks.clear();
+	if (pile && !Highlight.clickables.has(pile)) return;
+	if (Options.isOpen) return;
+
+	Highlight.removeAll();
 
 	let card = null;
-	clear_highlights();
-	highlights = [];
-
 	switch (state) {
 
 		case STATE_ZERO: {
@@ -860,8 +702,8 @@ function clicked(pile) {
 		case STATE_BUILD_DRAW: {
 			card = pile.pop();
 			flipping_deck = true;
-			animate_flip(card, Pile.get("Deck"));
-			then(() => {
+			Animate.flip(card, Pile.get("Deck"));
+			Animate.func(() => {
 				flipping_deck = false;
 				card.show;
 				pile.push(card);
@@ -876,8 +718,8 @@ function clicked(pile) {
 
 		case STATE_BUILD_ROYAL: {
 			card = Pile.get("Deck").pop();
-			animate_move(card, Pile.get("Deck"), Pile.get("Extra"));
-			then(() => {
+			Animate.move(card, Pile.get("Deck"), Pile.get("Extra"));
+			Animate.func(() => {
 				Pile.get("Extra").push(card);
 				state = STATE_BUILD_DRAW;
 			});
@@ -886,8 +728,8 @@ function clicked(pile) {
 
 		case STATE_BUILD_CARD: {
 			card = Pile.get("Deck").pop();
-			animate_move(card, Pile.get("Deck"), pile);
-			then(() => {
+			Animate.move(card, Pile.get("Deck"), pile);
+			Animate.func(() => {
 				pile.push(card);
 				if (Pile.getGrids().filter(pile => !pile.length && (pile.name !== "Grid22" || !Config.skip_center)).length) {
 					state = STATE_BUILD_DRAW;
@@ -904,8 +746,8 @@ function clicked(pile) {
 
 		case STATE_BUILD_ENEMY: {
 			card = Pile.get("Extra").pop();
-			animate_move(card, Pile.get("Extra"), pile);
-			then(() => {
+			Animate.move(card, Pile.get("Extra"), pile);
+			Animate.func(() => {
 				pile.push(card);
 				if (Pile.get("Extra").length) {
 					state = STATE_BUILD_ENEMY;
@@ -928,8 +770,8 @@ function clicked(pile) {
 			}
 			card = pile.pop();
 			flipping_deck = true;
-			animate_flip(card, Pile.get("Deck"));
-			then(() => {
+			Animate.flip(card, Pile.get("Deck"));
+			Animate.func(() => {
 				flipping_deck = false;
 				card.show;
 				pile.push(card);
@@ -962,8 +804,8 @@ function clicked(pile) {
 
 		case STATE_MAIN_ENEMY: {
 			card = Pile.get("Deck").pop();
-			animate_move(card, Pile.get("Deck"), pile);
-			then(() => {
+			Animate.move(card, Pile.get("Deck"), pile);
+			Animate.func(() => {
 				pile.push(card);
 
 				if (Pile.get("Extra").length) {
@@ -984,8 +826,8 @@ function clicked(pile) {
 
 		case STATE_MAIN_EXTRA: {
 			card = Pile.get("Deck").pop();
-			animate_move(card, Pile.get("Deck"), pile);
-			then(() => {
+			Animate.move(card, Pile.get("Deck"), pile);
+			Animate.func(() => {
 				pile.push(card);
 				state = STATE_MAIN_DRAW;
 			});
@@ -1008,16 +850,16 @@ function clicked(pile) {
 
 			// put ace/joker in pile, or discard it
 			if (discard) {
-				then(() => {
+				Animate.func(() => {
 					Pile.get("Deck").pop();
 				});
-				animate_destroy(card, Pile.get("Deck"));
+				Animate.destroy(card, Pile.get("Deck"));
 			} else {
-				then(() => {
+				Animate.func(() => {
 					Pile.get("Deck").pop();
 				});
-				animate_move(card, Pile.get("Deck"), pile);
-				then(() => {
+				Animate.move(card, Pile.get("Deck"), pile);
+				Animate.func(() => {
 					pile.push(card);
 				});
 			}
@@ -1025,7 +867,7 @@ function clicked(pile) {
 			if (!discard)
 				checkAttacks(pile);
 
-			then(() => {
+			Animate.func(() => {
 				// check win condition
 				if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 )
 					state = STATE_FINISHED_W;
@@ -1037,14 +879,14 @@ function clicked(pile) {
 
 		case STATE_MAIN_TOGRID: {
 			card = Pile.get("Deck").pop();
-			animate_move(card, Pile.get("Deck"), pile);
-			then(() => {
+			Animate.move(card, Pile.get("Deck"), pile);
+			Animate.func(() => {
 				pile.push(card);
 			});
 
 			checkAttacks(pile);
 
-			then(() => {
+			Animate.func(() => {
 				// check win condition
 				if ( Pile.getRoyals().filter(pile => pile.topCard && !pile.topCard.shown).length === 12 )
 					state = STATE_FINISHED_W;
@@ -1057,15 +899,15 @@ function clicked(pile) {
 		case STATE_MAIN_SHAME: {
 			card = Pile.get("Deck").pop();
 			if (pile.name === "Shame") {
-				animate_move(card, Pile.get("Deck"), Pile.get("Shame"));
-				then(() => {
+				Animate.move(card, Pile.get("Deck"), Pile.get("Shame"));
+				Animate.func(() => {
 					pile.push(card);
 					state = STATE_MAIN_CLEAR;
 				});
 				break;
 			} else {
-				animate_move(card, Pile.get("Deck"), pile, true);
-				then(() => {
+				Animate.move(card, Pile.get("Deck"), pile, true);
+				Animate.func(() => {
 					pile.unshift(card);
 					if ( !Config.armor_pierce && (pile.totalValue > 20 || (pile.totalValue === 20 && pile.topCard.value === 13)) ) {
 						// enemy became unkillable
@@ -1088,8 +930,8 @@ function clicked(pile) {
 		case STATE_MAIN_RANOUT: {
 			// move top of pile to shame, rest to deck
 			card = pile.pop();
-			animate_move(card, pile, Pile.get("Shame"));
-			then(() => {
+			Animate.move(card, pile, Pile.get("Shame"));
+			Animate.func(() => {
 				Pile.get("Shame").push(card);
 			});
 			add2deck(pile);
@@ -1111,7 +953,7 @@ function clicked(pile) {
 
 
 
-	then(() => {
+	Animate.func(() => {
 
 		// set help text
 		switch (state) {
@@ -1139,41 +981,41 @@ function clicked(pile) {
 		// set highlights for new state
 		switch (state) {
 			case STATE_BUILD_DRAW:
-				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+				Highlight.add("Deck", Highlight.DRAW);
 				break;
 			case STATE_BUILD_ROYAL:
-				highlights.push(["Extra", HIGHLIGHT_TOEXTRAR]);
-				highlights.push([pile, HIGHLIGHT_DRAWTO, false]);
+				Highlight.add("Extra", Highlight.TOEXTRAR);
+				Highlight.add(pile, Highlight.DRAWTO, false);
 				break;
 			case STATE_BUILD_CARD: {
 				const grids = Pile.getGrids().filter(pile => !pile.length && (pile.name !== "Grid22" || !Config.skip_center));
 				for (const pile of grids) {
-					highlights.push([pile, HIGHLIGHT_BUILD]);
+					Highlight.add(pile, Highlight.BUILD);
 					if (!Config.place_anygrid) break;
 				}
-				highlights.push([pile, HIGHLIGHT_DRAWTO, false]);
+				Highlight.add(pile, Highlight.DRAWTO, false);
 				break;
 			}
 			case STATE_BUILD_ENEMY:
-				highlights.push(["Extra", HIGHLIGHT_EXTRA, false]);
-				findEnemyPos(Pile.get("Extra").topCard).forEach(pile => highlights.push([pile, HIGHLIGHT_NEWENEMY]));
+				Highlight.add("Extra", Highlight.EXTRA, false);
+				findEnemyPos(Pile.get("Extra").topCard).forEach(pile => Highlight.add(pile, Highlight.NEWENEMY));
 				break;
 			case STATE_MAIN_DRAW:
-				highlights.push(["Deck", HIGHLIGHT_DRAW]);
+				Highlight.add("Deck", Highlight.DRAW);
 				break;
 			case STATE_MAIN_ENEMY:
-				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
-				findEnemyPos(card).forEach(pile => highlights.push([pile, HIGHLIGHT_NEWENEMY]));
+				Highlight.add("Deck", Highlight.DRAWTO, false);
+				findEnemyPos(card).forEach(pile => Highlight.add(pile, Highlight.NEWENEMY));
 				break;
 			case STATE_MAIN_NENEMY:
-				highlights.push(["Extra", HIGHLIGHT_NENEMY]);
+				Highlight.add("Extra", Highlight.NENEMY);
 				break;
 			case STATE_MAIN_EXTRA:
-				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
-				highlights.push(["Extra", HIGHLIGHT_TOEXTRA]);
+				Highlight.add("Deck", Highlight.DRAWTO, false);
+				Highlight.add("Extra", Highlight.TOEXTRA);
 				break;
 			case STATE_MAIN_JOKER: {
-				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
+				Highlight.add("Deck", Highlight.DRAWTO, false);
 
 				const restrict = card.value ? Config.ace_color : Config.joker_color; // 2:same suit, 1:same color
 				let possiblePiles = [];
@@ -1186,31 +1028,30 @@ function clicked(pile) {
 					possiblePiles = Pile.getGrids().filter(pile => pile.length);
 				Pile.getGrids().filter(pile => !pile.length).forEach(pile => possiblePiles.push(pile)); // add all empty piles
 
-				possiblePiles.forEach(pile => highlights.push([pile, HIGHLIGHT_CLEAR]));
+				possiblePiles.forEach(pile => Highlight.add(pile, Highlight.CLEAR));
 				break;
 			}
 			case STATE_MAIN_TOGRID: {
-				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
-				Pile.getGrids().filter( pile => !pile.topCard || pile.topCard.value <= card.value ).forEach(pile => highlights.push([pile, HIGHLIGHT_TOGRID]));
+				Highlight.add("Deck", Highlight.DRAWTO, false);
+				Pile.getGrids().filter( pile => !pile.topCard || pile.topCard.value <= card.value ).forEach(pile => Highlight.add(pile, Highlight.TOGRID));
 				break;
 			}
 			case STATE_MAIN_SHAME: {
-				highlights.push(["Deck", HIGHLIGHT_DRAWTO, false]);
-				Pile.getRoyals().filter( pile => pile.topCard && pile.topCard.shown ).forEach(pile => highlights.push([pile, HIGHLIGHT_ARMOR]));
-				highlights.push(["Shame", HIGHLIGHT_SHAME]);
+				Highlight.add("Deck", Highlight.DRAWTO, false);
+				Pile.getRoyals().filter( pile => pile.topCard && pile.topCard.shown ).forEach(pile => Highlight.add(pile, Highlight.ARMOR));
+				Highlight.add("Shame", Highlight.SHAME);
 				break;
 			}
 			case STATE_MAIN_CLEAR:
-				Pile.getGrids().filter(pile => pile.length).forEach(pile => highlights.push([pile, HIGHLIGHT_CLEAR]));
+				Pile.getGrids().filter(pile => pile.length).forEach(pile => Highlight.add(pile, Highlight.CLEAR));
 				break;
 			case STATE_MAIN_RANOUT: {
-				const grids = Pile.getGrids().filter(pile => pile.length > 1);
-				grids.forEach(pile => highlights.push([pile, HIGHLIGHT_RANOUT]));
+				Pile.getGrids().filter(pile => pile.length > 1).forEach(pile => Highlight.add(pile, Highlight.RANOUT));
 				break;
 			}
 		}
 
-		repaint_all();
+		repaint_all(true);
 
 		// announce victory or defeat
 		switch (state) {
@@ -1219,146 +1060,27 @@ function clicked(pile) {
 			case STATE_FINISHED_L2: alert("YOU LOSE!"); break;
 		}
 
-	});
 
-	stop_highlight();
-	do_animation();
-}
-
-
-var animations = [];
-function animate_flip(card, pile, show=true) {
-	if (!Config.animation) return;
-
-	let f = function(percent) {
-		ctx2.clearRect(0,0,canvas.width,canvas.height);
-
-		ctx2.save();
-		ctx2.translate(pile._x, pile._y);
-		if (pile._rotate) ctx2.rotate(Math.PI/2);
-		ctx2.scale(percent,1);
-
-		const [sx,sy] = card.sprite;
-		ctx2.drawImage(sprites, sx*W,sy*H,W,H, -W/2,-H/2,W,H);
-
-		ctx2.restore();
-	}
-
-	show ? card.hide : card.show;
-
-	let flippage = 100 - 5;
-	let ff = () => {
-		if (flippage<0) show ? card.show : card.hide;
-		f(Math.abs(flippage)/100);
-		flippage -= 10;
-		if (flippage > -100)
-			setTimeout(ff, ANIMATION_TIME);
-		else
-			setTimeout(do_animation, ANIMATION_TIME);
-	}
-	animations.push(ff);
-}
-function animate_move(card, pile_from, pile_to, put_below=false) {
-	if (!Config.animation) return;
-
-	let f = function(percent) {
-		ctx2.clearRect(0,0,canvas.width,canvas.height);
-
-		ctx2.save();
-		ctx2.translate(pile_from._x*(1-percent)+pile_to._x*percent, pile_from._y*(1-percent)+pile_to._y*percent);
-		let angle_from = pile_from._rotate ? Math.PI/2 : 0;
-		let angle_to = pile_to._rotate ? Math.PI/2 : 0;
-		ctx2.rotate(angle_from*(1-percent)+angle_to*percent);
-
-		const [sx,sy] = card.sprite;
-		ctx2.drawImage(sprites, sx*W,sy*H,W,H, -W/2,-H/2,W,H);
-
-		ctx2.restore();
-
-		if (put_below && pile_to.topCard) {
-			ctx2.save();
-			ctx2.translate(pile_to._x, pile_to._y);
-			if (pile_to._rotate) ctx2.rotate(Math.PI/2);
-
-			const [sx,sy] = pile_to.topCard.sprite;
-			ctx2.drawImage(sprites, sx*W,sy*H,W,H, -W/2,-H/2,W,H);
-
-			ctx2.restore();
-		}
-	}
-
-	let percent = 0 + 5;
-	let ff = () => {
-		f(percent/100);
-		percent += 5;
-		if (percent < 100)
-			setTimeout(ff, ANIMATION_TIME);
-		else
-			setTimeout(do_animation, ANIMATION_TIME);
-	}
-	animations.push(ff);
-}
-function animate_destroy(card, pile) {
-	if (!Config.animation) return;
-
-	let f = function(percent) {
-		ctx2.clearRect(0,0,canvas.width,canvas.height);
-
-		ctx2.save();
-		ctx2.translate(pile._x, pile._y);
-		if (pile._rotate) ctx2.rotate(Math.PI/2);
-
-		ctx2.scale(1+percent,1+percent);
-		ctx2.globalAlpha = 1-percent;
-
-		const [sx,sy] = card.sprite;
-		ctx2.drawImage(sprites, sx*W,sy*H,W,H, -W/2,-H/2,W,H);
-
-		ctx2.restore();
-	}
-
-	let percent = 0 + 5;
-	let ff = () => {
-		f(percent/100);
-		percent += 5;
-		if (percent < 100)
-			setTimeout(ff, ANIMATION_TIME);
-		else
-			setTimeout(do_animation, ANIMATION_TIME);
-	}
-	animations.push(ff);
-}
-function then(f) {
-	animations.push(() => {
-		f();
-		do_animation();
-	});
-}
-
-var animating = false;
-function do_animation() {
-	animating = true;
-	repaint_all(false);
-	if (animations.length) {
-		animations.shift()();
-		return;
-	}
-	animating = false;
-	if (valid_clicks.size === 1) {
 		// check for automatic forced moves
-		let autoclick = false;
-		if (Config.auto_draw)
-			if (valid_clicks.has(Pile.get("Deck")) && Pile.get("Deck").length)
-				autoclick = true;
-		if (Config.auto_build)
-			if (state===STATE_BUILD_DRAW || state===STATE_BUILD_ROYAL || state===STATE_BUILD_CARD || state===STATE_BUILD_ENEMY)
-				autoclick = true;
+		if (Highlight.clickables.size === 1) {
+			let autoclick = false;
+			if (Config.auto_draw)
+				if (Highlight.clickables.has(Pile.get("Deck")) && Pile.get("Deck").length)
+					autoclick = true;
+			if (Config.auto_build)
+				if (state===STATE_BUILD_DRAW || state===STATE_BUILD_ROYAL || state===STATE_BUILD_CARD || state===STATE_BUILD_ENEMY)
+					autoclick = true;
 
-		if (autoclick)
-			clicked( valid_clicks.values().next().value );
-	}
+			if (autoclick)
+				clicked( Highlight.clickables.values().next().value );
+		}
+	},true);
+
+
+	Animate.doit();
 }
 
 </script>
 
 </body></html>
+
