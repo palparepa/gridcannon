@@ -128,6 +128,7 @@ Card.setStyle(0, false);
 
 
 CanvasRenderingContext2D.prototype.paintCard = function(card, x=0,y=0) {
+	if (!card) return; // FIXME: shouldn't happen, but happens when killing an armored royal
 	const [sx,sy] = card._shown ? card._sprite : Card.backSprite;
 	this.drawImage(Card.sprites, sx*Card.WIDTH,sy*Card.HEIGHT,Card.WIDTH,Card.HEIGHT, x-Card.WIDTH/2,y-Card.HEIGHT/2,Card.WIDTH,Card.HEIGHT);
 }
